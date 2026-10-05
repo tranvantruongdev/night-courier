@@ -46,7 +46,7 @@ namespace NightCourier.Core
         public SpatialGrid Grid { get; }
 
         /// <summary>Returns the new slot, or -1 when the swarm is full.</summary>
-        public int Spawn(EnemyKind kind, float x, float y)
+        public int Spawn(EnemyKind kind, float x, float y, float hpScale = 1f)
         {
             if (Count == Capacity)
             {
@@ -57,7 +57,7 @@ namespace NightCourier.Core
             X[i] = x;
             Y[i] = y;
             Kind[i] = kind;
-            Hp[i] = _t.Stats(kind).hp;
+            Hp[i] = _t.Stats(kind).hp * hpScale;
             return i;
         }
 

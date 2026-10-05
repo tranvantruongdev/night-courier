@@ -16,8 +16,7 @@ namespace NightCourier.Core.Tests
         internal static RideTuning Quiet()
         {
             var t = RideTuning.Default();
-            t.startEnemies = 0;
-            t.enemiesPerSecond = 0f;
+            t.waves = new WaveKey[0];
             t.headlightDps = 0f;
             return t;
         }
@@ -58,19 +57,41 @@ namespace NightCourier.Core.Tests
         }
 
         [Test]
-        public void DroneCountRampsUpToTheTarget()
+        public void DroneCountFollowsTheWaveCurve()
         {
             var t = RideTuning.Default();
-            t.maxHp = 1e9f; // survive the whole ramp
+            t.maxHp = 1e9f;
             var ride = new Ride(t, 1);
-            Assert.That(ride.Swarm.Count, Is.EqualTo(t.startEnemies));
+            Assert.That(ride.Swarm.Count, Is.EqualTo(t.waves[0].drones));
 
-            Run(ride, 10f, r => Up);
-            Assert.That(ride.Swarm.Count, Is.EqualTo(ride.TargetEnemyCount));
-            Assert.That(ride.Swarm.Count, Is.InRange(t.startEnemies + 19, t.startEnemies + 20)); // 2 a second
+            Run(ride, 30f, r => Up);
+            Assert.That(ride.Swarm.Count, Is.EqualTo(WaveDirector.Drones(t.waves, ride.Time)));
+            Assert.That(ride.Swarm.Count, Is.InRange(57, 58)); // halfway from 35 to 80
+        }
 
-            Run(ride, 200f, r => Up);
-            Assert.That(ride.Swarm.Count, Is.EqualTo(t.targetEnemies));
+        [Test]
+        public void WaveCurveInterpolatesAndHoldsItsEnds()
+        {
+            var keys = new[] { new WaveKey(10f, 20, 0.1f), new WaveKey(20f, 40, 0.3f) };
+            Assert.That(WaveDirector.Drones(keys, 0f), Is.EqualTo(20));
+            Assert.That(WaveDirector.Drones(keys, 15f), Is.EqualTo(30));
+            Assert.That(WaveDirector.HaulerShare(keys, 15f), Is.EqualTo(0.2f).Within(1e-5f));
+            Assert.That(WaveDirector.Drones(keys, 999f), Is.EqualTo(40));
+            Assert.That(WaveDirector.Drones(new WaveKey[0], 5f), Is.EqualTo(0));
+            Assert.That(WaveDirector.HpScale(120f, 0.15f), Is.EqualTo(1.3f).Within(1e-5f));
+        }
+
+        [Test]
+        public void DronesSpawnedLaterAreTougher()
+        {
+            var t = RideTuning.Default();
+            t.maxHp = 1e9f;
+            t.waves = new[] { new WaveKey(0f, 0, 0f), new WaveKey(119f, 0, 0f), new WaveKey(120f, 1, 0f) }; // one scout at 2:00
+            var ride = new Ride(t, 1);
+            t.headlightDps = 0f;
+            Run(ride, 120.5f, r => Up);
+            Assert.That(ride.Swarm.Count, Is.EqualTo(1));
+            Assert.That(ride.Swarm.Hp[0], Is.EqualTo(t.scout.hp * 1.3f).Within(0.05f));
         }
 
         [Test]

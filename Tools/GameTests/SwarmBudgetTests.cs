@@ -21,8 +21,7 @@ namespace NightCourier.Core.Tests
         public void SteppingTheRideAllocatesNothing(int drones)
         {
             var t = RideTuning.Default();
-            t.startEnemies = drones;
-            t.targetEnemies = drones;
+            t.waves = WaveDirector.Flat(drones);
             t.maxHp = 1e9f;
             var ride = new Ride(t, 9);
             var events = new List<RideEvent>(1024); // roomy: a bell can kill dozens in one step

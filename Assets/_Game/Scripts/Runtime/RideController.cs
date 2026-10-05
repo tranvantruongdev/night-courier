@@ -128,7 +128,7 @@ namespace NightCourier
             var tuning = RideTuning.Default();
             if (StressDrones > 0)
             {
-                tuning.startEnemies = tuning.targetEnemies = StressDrones;
+                tuning.waves = WaveDirector.Flat(StressDrones);
                 tuning.maxHp = float.MaxValue;
             }
 

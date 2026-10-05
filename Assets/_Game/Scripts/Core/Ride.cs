@@ -80,9 +80,8 @@ namespace NightCourier.Core
 
         public float MagnetRadius => _t.magnetRadius * (1f + _t.basketMagnetPerLevel * Loadout.Level(ItemKind.BigBasket));
 
-        /// <summary>Drones kept alive at this moment: a steady ramp until the wave director takes over.</summary>
-        public int TargetEnemyCount =>
-            Math.Min(_t.targetEnemies, _t.startEnemies + (int)(_t.enemiesPerSecond * Time));
+        /// <summary>Drones kept alive at this moment, from the wave curve.</summary>
+        public int TargetEnemyCount => WaveDirector.Drones(_t.waves, Time);
 
         public void Step(float dt, Vector2 stick, List<RideEvent> events)
         {
@@ -213,9 +212,9 @@ namespace NightCourier.Core
             while (Swarm.Count < target)
             {
                 float angle = _rng.Range(0f, 2f * MathF.PI);
-                var kind = _rng.Chance(_t.haulerShare) ? EnemyKind.Hauler : EnemyKind.Scout;
+                var kind = _rng.Chance(WaveDirector.HaulerShare(_t.waves, Time)) ? EnemyKind.Hauler : EnemyKind.Scout;
                 Vector2 at = Bike.Position + Direction(angle) * _t.spawnDistance;
-                Swarm.Spawn(kind, at.X, at.Y);
+                Swarm.Spawn(kind, at.X, at.Y, WaveDirector.HpScale(Time, _t.hpPerMinute));
             }
         }
 

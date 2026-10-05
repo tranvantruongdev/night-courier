@@ -60,10 +60,18 @@ namespace NightCourier.Core
         // Spawning: a steady ramp for now; the wave director replaces it.
         public float spawnDistance = 13f;
         public float despawnDistance = 22f;
-        public int startEnemies = 20;
-        public float enemiesPerSecond = 2f;
-        public int targetEnemies = 300;
-        public float haulerShare = 0.25f;
+        /// <summary>Drones kept alive over the 10-minute shift; a busy start so the first level-up comes early.</summary>
+        public WaveKey[] waves =
+        {
+            new WaveKey(0f, 35, 0.1f),
+            new WaveKey(60f, 80, 0.2f),
+            new WaveKey(180f, 160, 0.25f),
+            new WaveKey(360f, 240, 0.3f),
+            new WaveKey(600f, 300, 0.35f),
+        };
+
+        /// <summary>Drone HP × (1 + minutes × this).</summary>
+        public float hpPerMinute = 0.15f;
 
         // Weapons: level-1 values, plus the per-level step for each level above 1.
         public float headlightRange = 3.5f;
