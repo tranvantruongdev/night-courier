@@ -4,15 +4,16 @@
 Neon Ward glitched, and now the Swarm chases anything that stops moving. Kai, a night-shift courier on a
 fixed-gear bike, has to ride until dawn.
 
-> **Status (Oct 2026): week 1 of 5, movement and enemies.** The bike, the swarm, contact damage and the HUD
-> work in Unity 6.3 LTS; weapons, level-ups and the wave director come next. 65 EditMode tests pass, and a
-> PlayMode smoke test rides the real game on autopilot, crashes, saves the result and runs a 300-drone stress
-> ride. The screenshots below come from that test.
+> **Status (Oct 2026): week 2 of 5, in progress.** The bike, the swarm, three weapons (Headlight, Spoke Cards,
+> Bell), three passives, XP parcels and level-up cards work in Unity 6.3 LTS; three more weapons and the wave
+> director come next. 79 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
+> levels up through the card popup, crashes, saves the result and runs a 300-drone stress ride. The
+> screenshots below come from that test.
 
 <p>
   <img src="docs/screenshots/riding.png" width="270" alt="The cyan bike rides through a dark neon city block at full speed, with a gold trail; red diamond drones and a purple square hauler close in">
   <img src="docs/screenshots/stress-300.png" width="270" alt="Stress ride: 300 drones circle the bike">
-  <img src="docs/screenshots/results.png" width="270" alt="Shift over: survived 0:22, new best, Ride again and Home buttons">
+  <img src="docs/screenshots/level-up.png" width="270" alt="Level up: three cards, Headlight level 1 to 2, Gear Ratio new, Bell new">
 </p>
 
 | | |
@@ -30,11 +31,14 @@ fixed-gear bike, has to ride until dawn.
 - **Speed bonus:** damage × (1 + speed/max × 0.5). Above 70% of max speed the gauge turns gold and half of
   the hits miss you.
 - Scouts are fast and weak, haulers slow and heavy. A hit costs HP and gives 0.5 s of invulnerability.
+- Weapons fire on their own: the **Headlight** burns drones in a cone ahead, **Spoke Cards** orbit the bike,
+  the **Bell** knocks back everything around. Drones drop parcels; collect XP to level up and pick 1 of 3
+  cards (items you own come up more often).
 
 ## How it's built
 
 ```
-Assets/_Game/Scripts/Core/      rules in pure C# (no UnityEngine): BikeMotor, Swarm, SpatialGrid, Ride, RideBot
+Assets/_Game/Scripts/Core/      rules in pure C# (no UnityEngine): BikeMotor, Swarm, SpatialGrid, Arsenal, Ride, RideBot
 Assets/_Game/Scripts/Runtime/   Unity side: RideController, bike and swarm views, joystick, HUD, neon art
 Assets/_Game/Tests/EditMode/    the same tests run in Unity and with dotnet
 Assets/_Game/Tests/PlayMode/    smoke test: boot → title → autopilot ride → crash → results → 300-drone ride
@@ -60,7 +64,7 @@ dotnet test Tools/CoreTests/Template.Core.Tests.csproj       # template core
 In Unity (headless, Windows):
 
 ```bash
-powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 65 EditMode tests
+powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 79 EditMode tests
 powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1 -TestPlatform PlayMode -Graphics   # smoke test + screenshots in Logs/screenshots
 ```
 
