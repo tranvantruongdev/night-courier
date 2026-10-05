@@ -22,6 +22,16 @@ namespace NightCourier.UI
             _ => item.ToString(),
         };
 
+        /// <summary>The evolved weapon's name, for the EVOLVE card.</summary>
+        public static string EvolvedName(ItemKind item) => item switch
+        {
+            ItemKind.Headlight => "High Beam",
+            ItemKind.Bell => "Thunder Bell",
+            ItemKind.SpokeCards => "Wheel of Blades",
+            ItemKind.TyreSpikes => "Burning Trail",
+            _ => Name(item),
+        };
+
         public static string Line(ItemKind item) => item switch
         {
             ItemKind.Headlight => "Burns drones ahead. Wider and hotter.",

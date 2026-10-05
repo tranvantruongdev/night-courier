@@ -43,13 +43,19 @@ namespace NightCourier.Core
         public float SpokeAngle { get; private set; }
 
         public int SpokeBlades => _loadout.Owns(ItemKind.SpokeCards) ? _loadout.Level(ItemKind.SpokeCards) + 1 : 0;
-        public float HeadlightRange => _t.headlightRange + _t.headlightRangePerLevel * (_loadout.Level(ItemKind.Headlight) - 1);
+        public float HeadlightRange => (_t.headlightRange + _t.headlightRangePerLevel * (_loadout.Level(ItemKind.Headlight) - 1)) * Reach(ItemKind.Headlight);
         public float HeadlightHalfAngle => (_t.headlightHalfAngle + _t.headlightHalfAnglePerLevel * (_loadout.Level(ItemKind.Headlight) - 1)) * Deg2Rad;
-        public float BellRadius => _t.bellRadius + _t.bellRadiusPerLevel * (_loadout.Level(ItemKind.Bell) - 1);
+        public float BellRadius => (_t.bellRadius + _t.bellRadiusPerLevel * (_loadout.Level(ItemKind.Bell) - 1)) * Reach(ItemKind.Bell);
         public float BellCooldown => Cooldown(_t.bellCooldown);
         public float WhipCooldown => Cooldown(_t.whipCooldown);
         public float WhipRange => _t.whipRange + _t.whipRangePerLevel * (_loadout.Level(ItemKind.ChainWhip) - 1);
-        public float SpikesRadius => _t.spikesRadius + _t.spikesRadiusPerLevel * (_loadout.Level(ItemKind.TyreSpikes) - 1);
+        public float SpikesRadius => (_t.spikesRadius + _t.spikesRadiusPerLevel * (_loadout.Level(ItemKind.TyreSpikes) - 1)) * Reach(ItemKind.TyreSpikes);
+
+        /// <summary>Spoke blade radius; Wheel of Blades makes them bigger.</summary>
+        public float SpokeRadius => _t.spokeRadius * Reach(ItemKind.SpokeCards);
+
+        private float Power(ItemKind weapon) => _loadout.Evolved(weapon) ? Evolutions.DamageScale : 1f;
+        private float Reach(ItemKind weapon) => _loadout.Evolved(weapon) ? Evolutions.ReachScale : 1f;
 
         /// <summary>Spikes on the road (a ring buffer); a spike is live while its life is above 0.</summary>
         public float[] SpikeX { get; } = new float[MaxSpikes];
@@ -245,7 +251,7 @@ namespace NightCourier.Core
             }
 
             float radius = SpikesRadius;
-            float damage = (_t.spikesDps + _t.spikesDpsPerLevel * (_loadout.Level(ItemKind.TyreSpikes) - 1)) * bonus * dt;
+            float damage = (_t.spikesDps + _t.spikesDpsPerLevel * (_loadout.Level(ItemKind.TyreSpikes) - 1)) * Power(ItemKind.TyreSpikes) * bonus * dt;
             for (int s = 0; s < MaxSpikes; s++)
             {
                 if (SpikeLife[s] <= 0f)
@@ -273,7 +279,7 @@ namespace NightCourier.Core
             int level = _loadout.Level(ItemKind.Headlight);
             float range = HeadlightRange;
             float cosHalf = MathF.Cos(HeadlightHalfAngle);
-            float damage = (_t.headlightDps + _t.headlightDpsPerLevel * (level - 1)) * bonus * dt;
+            float damage = (_t.headlightDps + _t.headlightDpsPerLevel * (level - 1)) * Power(ItemKind.Headlight) * bonus * dt;
             Vector2 p = bike.Position, forward = bike.Forward;
 
             int found = _swarm.Grid.Query(p.X, p.Y, range + _t.MaxEnemyRadius, _near);
@@ -297,19 +303,19 @@ namespace NightCourier.Core
             int level = _loadout.Level(ItemKind.SpokeCards);
             int blades = level + 1;
             SpokeAngle = BikeMotor.WrapAngle(SpokeAngle + _t.spokeTurnRate * Deg2Rad * dt);
-            float damage = (_t.spokeDps + _t.spokeDpsPerLevel * (level - 1)) * bonus * dt;
+            float damage = (_t.spokeDps + _t.spokeDpsPerLevel * (level - 1)) * Power(ItemKind.SpokeCards) * bonus * dt;
 
             for (int b = 0; b < blades; b++)
             {
                 float angle = SpokeAngle + b * 2f * MathF.PI / blades;
                 float bx = bike.Position.X + MathF.Cos(angle) * _t.spokeOrbit;
                 float by = bike.Position.Y + MathF.Sin(angle) * _t.spokeOrbit;
-                int found = _swarm.Grid.Query(bx, by, _t.spokeRadius + _t.MaxEnemyRadius, _near);
+                int found = _swarm.Grid.Query(bx, by, SpokeRadius + _t.MaxEnemyRadius, _near);
                 for (int k = 0; k < found; k++)
                 {
                     int i = _near[k];
                     float dx = _swarm.X[i] - bx, dy = _swarm.Y[i] - by;
-                    float reach = _t.spokeRadius + _t.Stats(_swarm.Kind[i]).radius;
+                    float reach = SpokeRadius + _t.Stats(_swarm.Kind[i]).radius;
                     if (dx * dx + dy * dy <= reach * reach)
                     {
                         Hit(i, damage, ItemKind.SpokeCards);
@@ -322,7 +328,7 @@ namespace NightCourier.Core
         {
             int level = _loadout.Level(ItemKind.Bell);
             float radius = BellRadius;
-            float damage = (_t.bellDamage + _t.bellDamagePerLevel * (level - 1)) * bonus;
+            float damage = (_t.bellDamage + _t.bellDamagePerLevel * (level - 1)) * Power(ItemKind.Bell) * bonus;
             Vector2 p = bike.Position;
             events.Add(new RideEvent { type = RideEventType.BellRang, x = p.X, y = p.Y, value = radius });
 

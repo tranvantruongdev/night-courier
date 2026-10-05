@@ -73,6 +73,14 @@ namespace NightCourier.Core.Tests
                 }
             }
 
+            foreach (ItemKind item in Enum.GetValues(typeof(ItemKind)))
+            {
+                if (loadout.CanEvolve(item))
+                {
+                    loadout.Evolve(item);
+                }
+            }
+
             var offer = new ItemKind[3];
             var scratch = new double[Loadout.ItemCount];
             Assert.That(LevelUpRoller.Roll(loadout, new SeededRandom(1), offer, scratch), Is.EqualTo(1));
@@ -83,7 +91,49 @@ namespace NightCourier.Core.Tests
                 loadout.Upgrade(ItemKind.Bell);
             }
 
+            Assert.That(LevelUpRoller.Roll(loadout, new SeededRandom(1), offer, scratch), Is.EqualTo(1), "Bell + Helmet: Thunder Bell");
+            loadout.Evolve(ItemKind.Bell);
             Assert.That(LevelUpRoller.Roll(loadout, new SeededRandom(1), offer, scratch), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AMaxedWeaponWithItsPassiveEvolvesAndHitsTwiceAsHard()
+        {
+            var t = Armed();
+            var ride = new Ride(t, 1);
+            for (int i = 1; i < Loadout.MaxLevel; i++)
+            {
+                ride.Loadout.Upgrade(ItemKind.Headlight);
+            }
+
+            Assert.That(ride.Loadout.CanEvolve(ItemKind.Headlight), Is.False, "needs Gear Ratio too");
+            ride.Loadout.Upgrade(ItemKind.GearRatio);
+            Assert.That(ride.Loadout.CanEvolve(ItemKind.Headlight), Is.True);
+
+            float DamageInOneStep()
+            {
+                while (ride.Swarm.Count > 0)
+                {
+                    ride.Swarm.RemoveAt(0); // one target only
+                }
+
+                ride.Swarm.Spawn(EnemyKind.Hauler, ride.Bike.Position.X, ride.Bike.Position.Y + 2f);
+                ride.Swarm.Hp[ride.Swarm.Count - 1] = 1e6f;
+                float before = ride.Arsenal.DamageBy[(int)ItemKind.Headlight];
+                RideTests.Run(ride, Dt, r => Vector2.Zero);
+                return ride.Arsenal.DamageBy[(int)ItemKind.Headlight] - before;
+            }
+
+            float plain = DamageInOneStep();
+            float range = ride.Arsenal.HeadlightRange;
+            ride.Parcels.Add(ride.Bike.Position.X, ride.Bike.Position.Y, ride.XpNeeded);
+            ride.Step(Dt, Vector2.Zero, new List<RideEvent>());
+            int card = Array.IndexOf(ride.Offer, ItemKind.Headlight, 0, ride.OfferCount);
+            Assert.That(card, Is.GreaterThanOrEqualTo(0), "the High Beam card is on offer");
+            ride.Choose(card);
+            Assert.That(ride.Loadout.Evolved(ItemKind.Headlight), Is.True);
+            Assert.That(ride.Arsenal.HeadlightRange, Is.EqualTo(range * Evolutions.ReachScale).Within(1e-4f));
+            Assert.That(DamageInOneStep(), Is.EqualTo(plain * 2f).Within(plain * 0.02f));
         }
 
         [Test]

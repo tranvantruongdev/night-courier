@@ -27,10 +27,26 @@ namespace NightCourier.Core
         public static readonly int ItemCount = Enum.GetValues(typeof(ItemKind)).Length;
 
         private readonly int[] _levels = new int[ItemCount];
+        private readonly bool[] _evolved = new bool[ItemCount];
 
         public int Level(ItemKind item) => _levels[(int)item];
         public bool Owns(ItemKind item) => _levels[(int)item] > 0;
         public bool CanUpgrade(ItemKind item) => _levels[(int)item] < MaxLevel;
+        public bool Evolved(ItemKind item) => _evolved[(int)item];
+
+        /// <summary>A weapon at max level whose paired passive is owned evolves (Vampire Survivors style).</summary>
+        public bool CanEvolve(ItemKind item) =>
+            !_evolved[(int)item] && _levels[(int)item] == MaxLevel && Evolutions.PassiveFor(item) is ItemKind passive && Owns(passive);
+
+        public void Evolve(ItemKind item)
+        {
+            if (!CanEvolve(item))
+            {
+                throw new InvalidOperationException($"{item} can't evolve.");
+            }
+
+            _evolved[(int)item] = true;
+        }
 
         public void Upgrade(ItemKind item)
         {
@@ -41,6 +57,22 @@ namespace NightCourier.Core
 
             _levels[(int)item]++;
         }
+    }
+
+    /// <summary>The plan's pairs: weapon at level 5 + this passive → its evolution.</summary>
+    public static class Evolutions
+    {
+        public const float DamageScale = 2f;
+        public const float ReachScale = 1.25f;
+
+        public static ItemKind? PassiveFor(ItemKind weapon) => weapon switch
+        {
+            ItemKind.Headlight => ItemKind.GearRatio,   // High Beam
+            ItemKind.Bell => ItemKind.Helmet,           // Thunder Bell
+            ItemKind.SpokeCards => ItemKind.LighterFrame, // Wheel of Blades
+            ItemKind.TyreSpikes => ItemKind.BigBasket,  // Burning Trail
+            _ => null,
+        };
     }
 
     /// <summary>XP needed to go from <paramref name="level"/> to the next: 5 + 7 × level^1.3.</summary>
@@ -58,6 +90,9 @@ namespace NightCourier.Core
         public const int Cards = 3;
         public const double OwnedWeight = 3.0;
 
+        /// <summary>An evolution waiting to happen is nearly always on offer.</summary>
+        public const double EvolveWeight = 50.0;
+
         /// <summary>Fills <paramref name="offer"/> (length ≥ 3) and returns how many cards there are (0 when all is maxed).</summary>
         public static int Roll(Loadout loadout, SeededRandom rng, ItemKind[] offer, double[] scratch)
         {
@@ -65,7 +100,9 @@ namespace NightCourier.Core
             for (int i = 0; i < Loadout.ItemCount; i++)
             {
                 var item = (ItemKind)i;
-                scratch[i] = !loadout.CanUpgrade(item) ? 0.0 : loadout.Owns(item) ? OwnedWeight : 1.0;
+                scratch[i] = loadout.CanEvolve(item) ? EvolveWeight
+                    : !loadout.CanUpgrade(item) ? 0.0
+                    : loadout.Owns(item) ? OwnedWeight : 1.0;
             }
 
             while (count < Cards)

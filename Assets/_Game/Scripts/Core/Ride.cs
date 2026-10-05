@@ -111,7 +111,16 @@ namespace NightCourier.Core
                 throw new InvalidOperationException($"No card {index} on offer ({OfferCount} cards, {PendingLevelUps} level-ups pending).");
             }
 
-            Loadout.Upgrade(Offer[index]);
+            var item = Offer[index];
+            if (Loadout.CanEvolve(item))
+            {
+                Loadout.Evolve(item);
+            }
+            else
+            {
+                Loadout.Upgrade(item);
+            }
+
             PendingLevelUps--;
             RollOffer();
         }

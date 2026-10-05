@@ -122,6 +122,13 @@ namespace NightCourier.UI
                 {
                     var item = ride.Offer[i];
                     int level = ride.Loadout.Level(item);
+                    if (ride.Loadout.CanEvolve(item))
+                    {
+                        _cardTitles[i].text = $"{UiFactory.Localize(ItemText.EvolvedName(item))}  <size=70%>{UiFactory.Localize("EVOLVE")}</size>";
+                        _cardLines[i].text = UiFactory.Localize("Evolved: double damage, wider reach.");
+                        continue;
+                    }
+
                     string tag = level == 0 ? UiFactory.Localize("NEW") : $"{UiFactory.Localize("Lv")} {level} → {level + 1}";
                     _cardTitles[i].text = $"{UiFactory.Localize(ItemText.Name(item))}  <size=70%>{tag}</size>";
                     _cardLines[i].text = UiFactory.Localize(ItemText.Line(item));
