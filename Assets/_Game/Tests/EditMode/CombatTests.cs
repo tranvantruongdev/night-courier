@@ -228,6 +228,61 @@ namespace NightCourier.Core.Tests
             Assert.That(hit.value, Is.EqualTo(t.hauler.contactDamage * (1f - 2f * t.helmetArmourPerLevel)).Within(1e-4f));
         }
 
+        [Test]
+        public void LighterFrameRaisesTopSpeed()
+        {
+            var t = Armed();
+            var ride = new Ride(t, 1);
+            ride.Loadout.Upgrade(ItemKind.LighterFrame);
+            ride.Loadout.Upgrade(ItemKind.LighterFrame);
+
+            RideTests.Run(ride, 3f, r => Up);
+
+            Assert.That(ride.Bike.Speed, Is.EqualTo(t.maxSpeed * (1f + 2f * t.frameSpeedPerLevel)).Within(1e-4f));
+            Assert.That(ride.Bike.DamageMultiplier, Is.EqualTo(1.5f).Within(1e-4f), "the bonus is relative to your own top speed");
+        }
+
+        [Test]
+        public void BetterBrakesKeepTheBonusWhileBraking()
+        {
+            float MultiplierWhileBraking(bool brakes)
+            {
+                var ride = new Ride(Armed(), 1);
+                if (brakes)
+                {
+                    ride.Loadout.Upgrade(ItemKind.BetterBrakes);
+                }
+
+                RideTests.Run(ride, 2f, r => Up);  // full speed
+                RideTests.Run(ride, 0.2f, r => -Up); // pull back
+                Assert.That(ride.Bike.Braking, Is.True);
+                return ride.Bike.DamageMultiplier;
+            }
+
+            Assert.That(MultiplierWhileBraking(true), Is.EqualTo(1.5f).Within(1e-4f));
+            Assert.That(MultiplierWhileBraking(false), Is.LessThan(1.45f));
+        }
+
+        [Test]
+        public void EnergyGelHealsOverTime()
+        {
+            var t = Armed();
+            var ride = new Ride(t, 1);
+            ride.Swarm.Spawn(EnemyKind.Hauler, 0f, 0.3f);
+            ride.Swarm.Hp[0] = 1e6f;
+            RideTests.Run(ride, Dt, r => Vector2.Zero);
+            float hurt = ride.Hp;
+            Assert.That(hurt, Is.EqualTo(t.maxHp - t.hauler.contactDamage));
+
+            for (int i = 0; i < Loadout.MaxLevel; i++)
+            {
+                ride.Loadout.Upgrade(ItemKind.EnergyGel);
+            }
+
+            RideTests.Run(ride, 5f, r => Vector2.Zero); // rides away from the parked hauler
+            Assert.That(ride.Hp, Is.EqualTo(MathF.Min(t.maxHp, hurt + 5f * t.gelRegenPerLevel * 5f)).Within(0.05f));
+        }
+
         /// <summary>
         /// Pacing guard. The plan wants the first level-up around 20 s for a player; this bot never aims the
         /// headlight, so it gets 15–40 s. Tighten the bound when the wave director shapes the early density.

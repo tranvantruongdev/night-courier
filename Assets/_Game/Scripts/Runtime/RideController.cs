@@ -195,7 +195,7 @@ namespace NightCourier
             _hud.SetTime(_ride.Time);
             _hud.SetLevel(_ride.Level, _ride.Xp / (float)_ride.XpNeeded);
             _hud.SetHp(_ride.Hp / _ride.Tuning.maxHp);
-            _hud.SetSpeed(bike.Speed / _ride.Tuning.maxSpeed, bike.CanDodge);
+            _hud.SetSpeed(bike.Speed / bike.MaxSpeed, bike.CanDodge);
 
             _camera.transform.position = Vector3.SmoothDamp(_camera.transform.position, CameraTarget(), ref _cameraVelocity, CameraSmoothing);
             Vector3 c = _camera.transform.position;

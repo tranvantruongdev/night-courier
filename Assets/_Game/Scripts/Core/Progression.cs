@@ -12,6 +12,9 @@ namespace NightCourier.Core
         BigBasket,
         GearRatio,
         Helmet,
+        LighterFrame,
+        BetterBrakes,
+        EnergyGel,
     }
 
     /// <summary>What the bike carries: a level per item, 0 = not owned.</summary>

@@ -13,6 +13,9 @@ namespace NightCourier.UI
             ItemKind.BigBasket => "Big Basket",
             ItemKind.GearRatio => "Gear Ratio",
             ItemKind.Helmet => "Helmet",
+            ItemKind.LighterFrame => "Lighter Frame",
+            ItemKind.BetterBrakes => "Better Brakes",
+            ItemKind.EnergyGel => "Energy Gel",
             _ => item.ToString(),
         };
 
@@ -24,6 +27,9 @@ namespace NightCourier.UI
             ItemKind.BigBasket => "Pulls parcels in from 25% further.",
             ItemKind.GearRatio => "Weapons recharge 8% faster.",
             ItemKind.Helmet => "Drone hits hurt 8% less.",
+            ItemKind.LighterFrame => "6% faster top and cruise speed.",
+            ItemKind.BetterBrakes => "Keep the speed bonus while braking.",
+            ItemKind.EnergyGel => "Regain 0.4 HP a second.",
             _ => "",
         };
     }

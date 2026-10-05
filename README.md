@@ -5,8 +5,8 @@ Neon Ward glitched, and now the Swarm chases anything that stops moving. Kai, a 
 fixed-gear bike, has to ride until dawn.
 
 > **Status (Oct 2026): week 2 of 5, in progress.** The bike, the swarm, three weapons (Headlight, Spoke Cards,
-> Bell), three passives, XP parcels and level-up cards work in Unity 6.3 LTS; three more weapons and the wave
-> director come next. 79 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
+> Bell), six passives, XP parcels and level-up cards work in Unity 6.3 LTS; three more weapons and the wave
+> director come next. 82 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
 > levels up through the card popup, crashes, saves the result and runs a 300-drone stress ride. The
 > screenshots below come from that test.
 
@@ -49,8 +49,9 @@ Assets/_Project/                shared template: boot flow, saves, audio, haptic
   loop. Separation goes through a **spatial grid**: 2-unit cells hashed into a fixed table and
   counting-sorted, so a rebuild is O(n) with no allocation. A test checks every query against a brute-force
   scan with forced hash collisions.
-- **0 B of garbage per step**, checked by a dotnet test at 100, 300 and 500 drones. Desktop baseline: 55, 280
-  and 517 µs per simulation step. Phone numbers come from the Unity Profiler (dev builds have Stress
+- **0 B of garbage per step**, checked by a dotnet test at 100, 300 and 500 drones with the weapons firing and
+  level-ups taken. Desktop: about 0.15, 0.7
+  and 1.5 ms per 1/120 s simulation step. Phone numbers come from the Unity Profiler (dev builds have Stress
   100/300/500 buttons).
 - **Drawing:** one pooled SpriteRenderer per alive drone, positioned in a single loop; no `Update()` per drone.
 - **Deterministic:** same seed and same inputs give the same ride. An autopilot (steer toward the emptiest
@@ -64,7 +65,7 @@ dotnet test Tools/CoreTests/Template.Core.Tests.csproj       # template core
 In Unity (headless, Windows):
 
 ```bash
-powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 79 EditMode tests
+powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 82 EditMode tests
 powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1 -TestPlatform PlayMode -Graphics   # smoke test + screenshots in Logs/screenshots
 ```
 

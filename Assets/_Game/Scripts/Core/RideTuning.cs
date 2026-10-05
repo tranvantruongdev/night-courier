@@ -91,6 +91,9 @@ namespace NightCourier.Core
         public float basketMagnetPerLevel = 0.25f;
         public float gearCooldownPerLevel = 0.08f;
         public float helmetArmourPerLevel = 0.08f;
+        public float frameSpeedPerLevel = 0.06f;
+        public float brakesTurnLossPerLevel = 0.15f;
+        public float gelRegenPerLevel = 0.4f;
 
         // Parcels (XP drops)
         public int maxParcels = 400;

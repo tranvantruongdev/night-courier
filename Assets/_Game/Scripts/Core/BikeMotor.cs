@@ -14,6 +14,7 @@ namespace NightCourier.Core
         private const float Deg2Rad = MathF.PI / 180f;
 
         private readonly RideTuning _t;
+        private float _brakeStartSpeed;
 
         public BikeMotor(RideTuning tuning, Vector2 position, float headingRadians)
         {
@@ -37,20 +38,36 @@ namespace NightCourier.Core
         public Vector2 Forward => new Vector2(MathF.Cos(Heading), MathF.Sin(Heading));
         public Vector2 Velocity => Forward * Speed;
 
+        /// <summary>Scales cruise and max speed (Lighter Frame).</summary>
+        public float SpeedScale { get; set; } = 1f;
+
+        /// <summary>Scales the speed lost to hard turns (Better Brakes).</summary>
+        public float TurnLossScale { get; set; } = 1f;
+
+        /// <summary>While braking, the speed bonus stays at the speed the brake started from (Better Brakes).</summary>
+        public bool KeepBonusWhileBraking { get; set; }
+
+        public float MaxSpeed => _t.maxSpeed * SpeedScale;
+        public float CruiseSpeed => _t.cruiseSpeed * SpeedScale;
+
+        /// <summary>The speed the bonus is worked out from.</summary>
+        public float BonusSpeed => Braking && KeepBonusWhileBraking ? MathF.Max(Speed, _brakeStartSpeed) : Speed;
+
         /// <summary>Damage × (1 + v / vmax × bonus).</summary>
-        public float DamageMultiplier => 1f + Speed / _t.maxSpeed * _t.speedDamageBonus;
+        public float DamageMultiplier => 1f + BonusSpeed / MaxSpeed * _t.speedDamageBonus;
 
         /// <summary>Above this speed contact hits can be dodged.</summary>
-        public bool CanDodge => Speed > _t.dodgeSpeedFraction * _t.maxSpeed;
+        public bool CanDodge => BonusSpeed > _t.dodgeSpeedFraction * MaxSpeed;
 
         /// <summary>Radians per second at the current speed.</summary>
         public float TurnRate => _t.turnRateAtCruise * Deg2Rad *
-            Math.Clamp(_t.cruiseSpeed / Speed, _t.minTurnScale, _t.maxTurnScale);
+            Math.Clamp(CruiseSpeed / Speed, _t.minTurnScale, _t.maxTurnScale);
 
         public void Step(float dt, Vector2 stick)
         {
             float push = stick.Length();
-            float target = _t.cruiseSpeed;
+            float target = CruiseSpeed;
+            bool wasBraking = Braking;
             Braking = false;
             TurnAmount = 0f;
 
@@ -61,7 +78,11 @@ namespace NightCourier.Core
                 if (!Braking)
                 {
                     float t = Math.Clamp((push - _t.stickDeadZone) / (1f - _t.stickDeadZone), 0f, 1f);
-                    target = _t.cruiseSpeed + (_t.maxSpeed - _t.cruiseSpeed) * t;
+                    target = CruiseSpeed + (MaxSpeed - CruiseSpeed) * t;
+                }
+                else if (!wasBraking)
+                {
+                    _brakeStartSpeed = Speed;
                 }
 
                 float maxTurn = TurnRate * dt;
@@ -76,11 +97,11 @@ namespace NightCourier.Core
             }
             else
             {
-                target -= _t.turnSpeedLoss * TurnAmount;
+                target -= _t.turnSpeedLoss * TurnLossScale * TurnAmount;
                 Speed = MoveTowards(Speed, target, _t.acceleration * dt);
             }
 
-            Speed = Math.Clamp(Speed, _t.minSpeed, _t.maxSpeed);
+            Speed = Math.Clamp(Speed, _t.minSpeed, MaxSpeed);
             Position += Forward * (Speed * dt);
         }
 

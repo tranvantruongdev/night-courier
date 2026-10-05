@@ -92,6 +92,7 @@ namespace NightCourier.Core
 
             Time += dt;
             _invulnerable = MathF.Max(0f, _invulnerable - dt);
+            ApplyPassives(dt);
             Bike.Step(dt, stick);
             RecycleStragglers();
             Swarm.Step(dt, Bike.Position);
@@ -113,6 +114,15 @@ namespace NightCourier.Core
             Loadout.Upgrade(Offer[index]);
             PendingLevelUps--;
             RollOffer();
+        }
+
+        /// <summary>Lighter Frame (+speed), Better Brakes (keep the bonus while braking, softer turns), Energy Gel (regen).</summary>
+        private void ApplyPassives(float dt)
+        {
+            Bike.SpeedScale = 1f + _t.frameSpeedPerLevel * Loadout.Level(ItemKind.LighterFrame);
+            Bike.KeepBonusWhileBraking = Loadout.Owns(ItemKind.BetterBrakes);
+            Bike.TurnLossScale = MathF.Max(0f, 1f - _t.brakesTurnLossPerLevel * Loadout.Level(ItemKind.BetterBrakes));
+            Hp = MathF.Min(_t.maxHp, Hp + _t.gelRegenPerLevel * Loadout.Level(ItemKind.EnergyGel) * dt);
         }
 
         private void Reap(List<RideEvent> events)
