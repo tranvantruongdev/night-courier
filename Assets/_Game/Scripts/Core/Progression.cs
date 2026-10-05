@@ -11,6 +11,7 @@ namespace NightCourier.Core
         Bell,
         ChainWhip,
         TyreSpikes,
+        PannierDrone,
         BigBasket,
         GearRatio,
         Helmet,

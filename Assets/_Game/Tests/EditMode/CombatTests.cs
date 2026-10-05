@@ -263,6 +263,34 @@ namespace NightCourier.Core.Tests
         }
 
         [Test]
+        public void ThePannierDroneHomesInOnDronesTheHeadlightMisses()
+        {
+            var t = Armed();
+            t.headlightDps = 0f;
+            var ride = new Ride(t, 1);
+            ride.Loadout.Upgrade(ItemKind.PannierDrone);
+            ride.Swarm.Spawn(EnemyKind.Hauler, 4f, -1f); // off to the side and behind
+
+            RideTests.Run(ride, t.pannierCooldown + 0.8f, r => Vector2.Zero);
+
+            Assert.That(ride.Arsenal.DamageBy[(int)ItemKind.PannierDrone], Is.EqualTo(t.pannierDamage * ride.Bike.DamageMultiplier).Within(0.01f),
+                "one volley of one shot, one hit");
+        }
+
+        [Test]
+        public void ThePannierDroneHoldsFireWithNothingInRange()
+        {
+            var t = Armed();
+            var ride = new Ride(t, 1);
+            ride.Loadout.Upgrade(ItemKind.PannierDrone);
+            ride.Swarm.Spawn(EnemyKind.Hauler, 20f, 0f);
+
+            RideTests.Run(ride, 2f, r => Vector2.Zero);
+
+            Assert.That(ride.Arsenal.ShotLife, Has.All.LessThanOrEqualTo(0f));
+        }
+
+        [Test]
         public void LighterFrameRaisesTopSpeed()
         {
             var t = Armed();

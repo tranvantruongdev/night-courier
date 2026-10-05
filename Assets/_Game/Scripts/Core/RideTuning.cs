@@ -102,6 +102,15 @@ namespace NightCourier.Core
         public float spikesDps = 18f;
         public float spikesDpsPerLevel = 6f;
 
+        /// <summary>Volleys of level-many homing shots at the nearest drone in range.</summary>
+        public float pannierCooldown = 0.8f;
+        public float pannierRange = 6f;
+        public float pannierDamage = 10f;
+        public float pannierDamagePerLevel = 4f;
+        public float pannierShotSpeed = 9f;
+        public float pannierShotLife = 1.2f;
+        public float pannierTurnRate = 360f;
+
         // Passives, per level
         public float basketMagnetPerLevel = 0.25f;
         public float gearCooldownPerLevel = 0.08f;

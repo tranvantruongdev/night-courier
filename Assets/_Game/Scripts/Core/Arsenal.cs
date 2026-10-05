@@ -16,6 +16,9 @@ namespace NightCourier.Core
         private readonly Loadout _loadout;
         private readonly Swarm _swarm;
         public const int MaxSpikes = 32;
+        public const int MaxShots = 64;
+        private const float ShotRadius = 0.15f;
+        private const float HomingRadius = 3f;
 
         private readonly int[] _near = new int[512];
         private float _bellTimer;
@@ -23,6 +26,8 @@ namespace NightCourier.Core
         private int _lastWhipSide = -1;
         private float _spikeTimer;
         private int _nextSpike;
+        private float _pannierTimer;
+        private int _nextShot;
 
         public Arsenal(RideTuning tuning, Loadout loadout, Swarm swarm)
         {
@@ -50,6 +55,14 @@ namespace NightCourier.Core
         public float[] SpikeX { get; } = new float[MaxSpikes];
         public float[] SpikeY { get; } = new float[MaxSpikes];
         public float[] SpikeLife { get; } = new float[MaxSpikes];
+
+        /// <summary>Pannier Drone shots (a ring buffer); a shot is live while its life is above 0.</summary>
+        public float[] ShotX { get; } = new float[MaxShots];
+        public float[] ShotY { get; } = new float[MaxShots];
+        public float[] ShotLife { get; } = new float[MaxShots];
+        private readonly float[] _shotVX = new float[MaxShots];
+        private readonly float[] _shotVY = new float[MaxShots];
+        private readonly float[] _shotDamage = new float[MaxShots];
 
         private float Cooldown(float seconds) => seconds * (1f - _t.gearCooldownPerLevel * _loadout.Level(ItemKind.GearRatio));
 
@@ -90,6 +103,107 @@ namespace NightCourier.Core
             {
                 LayAndBurnSpikes(dt, bike, bonus);
             }
+
+            if (_loadout.Owns(ItemKind.PannierDrone))
+            {
+                _pannierTimer += dt;
+                if (_pannierTimer >= Cooldown(_t.pannierCooldown))
+                {
+                    _pannierTimer = 0f;
+                    LaunchVolley(bike, bonus);
+                }
+            }
+
+            MoveShots(dt);
+        }
+
+        /// <summary>Level-many shots fanned at the nearest drone in range; nothing in range, nothing fired.</summary>
+        private void LaunchVolley(BikeMotor bike, float bonus)
+        {
+            Vector2 p = bike.Position;
+            int target = Nearest(p.X, p.Y, _t.pannierRange);
+            if (target < 0)
+            {
+                return;
+            }
+
+            int level = _loadout.Level(ItemKind.PannierDrone);
+            float aim = MathF.Atan2(_swarm.Y[target] - p.Y, _swarm.X[target] - p.X);
+            float damage = (_t.pannierDamage + _t.pannierDamagePerLevel * (level - 1)) * bonus;
+            for (int s = 0; s < level; s++)
+            {
+                float angle = aim + (s - (level - 1) * 0.5f) * 0.25f;
+                int i = _nextShot;
+                _nextShot = (_nextShot + 1) % MaxShots;
+                ShotX[i] = p.X;
+                ShotY[i] = p.Y;
+                _shotVX[i] = MathF.Cos(angle) * _t.pannierShotSpeed;
+                _shotVY[i] = MathF.Sin(angle) * _t.pannierShotSpeed;
+                ShotLife[i] = _t.pannierShotLife;
+                _shotDamage[i] = damage;
+            }
+        }
+
+        /// <summary>Shots bend toward the nearest drone around them and burst on the first one they touch.</summary>
+        private void MoveShots(float dt)
+        {
+            float maxTurn = _t.pannierTurnRate * Deg2Rad * dt;
+            for (int s = 0; s < MaxShots; s++)
+            {
+                if (ShotLife[s] <= 0f)
+                {
+                    continue;
+                }
+
+                ShotLife[s] -= dt;
+                int target = Nearest(ShotX[s], ShotY[s], HomingRadius);
+                if (target >= 0)
+                {
+                    float heading = MathF.Atan2(_shotVY[s], _shotVX[s]);
+                    float want = MathF.Atan2(_swarm.Y[target] - ShotY[s], _swarm.X[target] - ShotX[s]);
+                    heading += Math.Clamp(BikeMotor.WrapAngle(want - heading), -maxTurn, maxTurn);
+                    _shotVX[s] = MathF.Cos(heading) * _t.pannierShotSpeed;
+                    _shotVY[s] = MathF.Sin(heading) * _t.pannierShotSpeed;
+                }
+
+                ShotX[s] += _shotVX[s] * dt;
+                ShotY[s] += _shotVY[s] * dt;
+
+                int found = _swarm.Grid.Query(ShotX[s], ShotY[s], ShotRadius + _t.MaxEnemyRadius, _near);
+                for (int k = 0; k < found; k++)
+                {
+                    int i = _near[k];
+                    float dx = _swarm.X[i] - ShotX[s], dy = _swarm.Y[i] - ShotY[s];
+                    float reach = ShotRadius + _t.Stats(_swarm.Kind[i]).radius;
+                    if (_swarm.Hp[i] > 0f && dx * dx + dy * dy <= reach * reach)
+                    {
+                        Hit(i, _shotDamage[s], ItemKind.PannierDrone);
+                        ShotLife[s] = 0f;
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>The closest live drone within <paramref name="range"/>, or -1.</summary>
+        private int Nearest(float x, float y, float range)
+        {
+            int found = _swarm.Grid.Query(x, y, range, _near);
+            int best = -1;
+            float bestD2 = range * range;
+            for (int k = 0; k < found; k++)
+            {
+                int i = _near[k];
+                float dx = _swarm.X[i] - x, dy = _swarm.Y[i] - y;
+                float d2 = dx * dx + dy * dy;
+                if (_swarm.Hp[i] > 0f && d2 <= bestD2)
+                {
+                    best = i;
+                    bestD2 = d2;
+                }
+            }
+
+            return best;
         }
 
         /// <summary>A 120° arc on the side the bike is turning toward; riding straight, it alternates sides.</summary>

@@ -17,6 +17,7 @@ namespace NightCourier.View
         private readonly SpriteRenderer _ring;
         private readonly SpriteRenderer _whip;
         private readonly SpriteRenderer[] _spikes = new SpriteRenderer[Arsenal.MaxSpikes];
+        private readonly SpriteRenderer[] _shots = new SpriteRenderer[Arsenal.MaxShots];
         private readonly List<SpriteRenderer> _parcels = new List<SpriteRenderer>();
         private float _whipAge = WhipSeconds;
         private int _parcelsShown;
@@ -44,6 +45,14 @@ namespace NightCourier.View
             {
                 _spikes[i] = Renderer("Spike", NeonArt.Dot, 3);
                 _spikes[i].enabled = false;
+            }
+
+            for (int i = 0; i < _shots.Length; i++)
+            {
+                _shots[i] = Renderer("Shot", NeonArt.Dot, 12);
+                _shots[i].color = Palette.Bike;
+                _shots[i].transform.localScale = Vector3.one * 0.5f;
+                _shots[i].enabled = false;
             }
         }
 
@@ -119,6 +128,15 @@ namespace NightCourier.View
                     _spikes[s].transform.position = new Vector3(arsenal.SpikeX[s], arsenal.SpikeY[s], 0f);
                     _spikes[s].transform.localScale = Vector3.one * spikeSize;
                     _spikes[s].color = new Color(1f, 0.55f, 0.2f, 0.75f * Mathf.Clamp01(life / 0.4f));
+                }
+            }
+
+            for (int s = 0; s < _shots.Length; s++)
+            {
+                _shots[s].enabled = arsenal.ShotLife[s] > 0f;
+                if (_shots[s].enabled)
+                {
+                    _shots[s].transform.position = new Vector3(arsenal.ShotX[s], arsenal.ShotY[s], 0f);
                 }
             }
 
