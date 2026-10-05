@@ -15,6 +15,7 @@ namespace NightCourier.Art
         public static readonly Color Scout = Hex(0xFF5A4E);
         public static readonly Color Hauler = Hex(0xA97BFF);
         public static readonly Color Hurt = Hex(0xFF2D55);
+        public static readonly Color Parcel = Hex(0x7CFFB2);
 
         public static Color Hex(int rgb, float alpha = 1f) =>
             new Color(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, alpha);
@@ -53,6 +54,41 @@ namespace NightCourier.Art
         /// use it with <see cref="SpriteDrawMode.Tiled"/>.
         /// </summary>
         public static Sprite Ground => _ground != null ? _ground : (_ground = DrawGround());
+
+        /// <summary>Thin glowing ring, 2 units across (radius 1): scale it to a radius.</summary>
+        public static Sprite Ring => _ring != null ? _ring : (_ring = Shape(64, 2.3f, (x, y) => Mathf.Abs(Mathf.Sqrt(x * x + y * y) - 0.87f) - 0.025f));
+
+        /// <summary>Light beam pointing right from the pivot, 1 unit long, fading with distance: scale x to the range.</summary>
+        public static Sprite Beam(float halfAngleDegrees)
+        {
+            int key = Mathf.RoundToInt(halfAngleDegrees);
+            if (Beams.TryGetValue(key, out var beam))
+            {
+                return beam;
+            }
+
+            const int size = 64;
+            float tan = Mathf.Tan(key * Mathf.Deg2Rad);
+            var pixels = new Color32[size * size];
+            for (int py = 0; py < size; py++)
+            {
+                for (int px = 0; px < size; px++)
+                {
+                    float x = (px + 0.5f) / size, y = ((py + 0.5f) / size - 0.5f) * 2f; // x 0..1 along, y -1..1 across
+                    float edge = x * tan;
+                    float inside = Mathf.Clamp01((edge - Mathf.Abs(y)) * size * 0.5f);
+                    pixels[py * size + px] = new Color32(255, 255, 255, (byte)(inside * (1f - x) * 255f));
+                }
+            }
+
+            // 1 × 1 unit with the edges at ±x·tan of the half-height: scale x by the range and y by twice the range.
+            beam = Make(pixels, size, size, size, TextureWrapMode.Clamp, new Vector2(0f, 0.5f));
+            Beams[key] = beam;
+            return beam;
+        }
+
+        private static readonly System.Collections.Generic.Dictionary<int, Sprite> Beams = new System.Collections.Generic.Dictionary<int, Sprite>();
+        private static Sprite _ring;
 
         private static Sprite Shape(int size, float units, Func<float, float, float> distance)
         {
@@ -103,7 +139,7 @@ namespace NightCourier.Art
             return Make(pixels, size, size, 16f, TextureWrapMode.Repeat);
         }
 
-        private static Sprite Make(Color32[] pixels, int w, int h, float pixelsPerUnit, TextureWrapMode wrap)
+        private static Sprite Make(Color32[] pixels, int w, int h, float pixelsPerUnit, TextureWrapMode wrap, Vector2? pivot = null)
         {
             var texture = new Texture2D(w, h, TextureFormat.RGBA32, false)
             {
@@ -112,7 +148,7 @@ namespace NightCourier.Art
             };
             texture.SetPixels32(pixels);
             texture.Apply(false, true);
-            return Sprite.Create(texture, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), pixelsPerUnit, 0, SpriteMeshType.FullRect);
+            return Sprite.Create(texture, new Rect(0, 0, w, h), pivot ?? new Vector2(0.5f, 0.5f), pixelsPerUnit, 0, SpriteMeshType.FullRect);
         }
 
         /// <summary>Distance to a horizontal capsule from (x0, 0) to (x1, 0).</summary>

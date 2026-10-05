@@ -25,13 +25,17 @@ namespace NightCourier.Core.Tests
             t.targetEnemies = drones;
             t.maxHp = 1e9f;
             var ride = new Ride(t, 9);
-            var events = new List<RideEvent>(64);
+            var events = new List<RideEvent>(1024); // roomy: a bell can kill dozens in one step
             var stick = new Vector2(0.3f, 1f);
 
             for (int i = 0; i < 120; i++)
             {
                 events.Clear();
                 ride.Step(Dt, stick, events);
+                while (ride.PendingLevelUps > 0)
+                {
+                    ride.Choose(0);
+                }
             }
 
             var clock = new Stopwatch(); // allocated before the count starts
@@ -42,6 +46,10 @@ namespace NightCourier.Core.Tests
             {
                 events.Clear();
                 ride.Step(Dt, stick, events);
+                while (ride.PendingLevelUps > 0)
+                {
+                    ride.Choose(0); // level-ups roll cards into preallocated buffers: still nothing allocated
+                }
             }
 
             clock.Stop();

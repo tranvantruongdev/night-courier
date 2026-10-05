@@ -1,5 +1,6 @@
 using System;
 using NightCourier.Art;
+using NightCourier.Core;
 using Template.Feel;
 using Template.UI;
 using TMPro;
@@ -27,6 +28,13 @@ namespace NightCourier.UI
         private GameObject _results;
         private TextMeshProUGUI _resultsTitle;
         private TextMeshProUGUI _resultsBody;
+        private RectTransform _xpFill;
+        private TextMeshProUGUI _level;
+        private GameObject _levelUp;
+        private readonly Button[] _cards = new Button[LevelUpRoller.Cards];
+        private readonly TextMeshProUGUI[] _cardTitles = new TextMeshProUGUI[LevelUpRoller.Cards];
+        private readonly TextMeshProUGUI[] _cardLines = new TextMeshProUGUI[LevelUpRoller.Cards];
+        private Action<int> _pick;
 
         public event Action PausePressed;
         public event Action ResumePressed;
@@ -52,6 +60,9 @@ namespace NightCourier.UI
             hud._time = UiFactory.Place(UiFactory.CreateText(safe, "0:00", 76, Vector2.zero, new Vector2(400, 100)),
                 new Vector2(0.5f, 1f), new Vector2(0f, -90f));
             hud._hpFill = Bar(safe, new Vector2(0.5f, 1f), new Vector2(-BarWidth * 0.5f, -170f), BarWidth, 26f, Palette.Hurt).rectTransform;
+            hud._xpFill = Bar(safe, new Vector2(0.5f, 1f), new Vector2(-BarWidth * 0.5f, -205f), BarWidth, 14f, Palette.Parcel).rectTransform;
+            hud._level = UiFactory.Place(UiFactory.CreateText(safe, "Lv 1", 40, Vector2.zero, new Vector2(200, 60), TextAlignmentOptions.Left),
+                new Vector2(0.5f, 1f), new Vector2(BarWidth * 0.5f + 120f, -185f));
 
             var gaugeLabel = UiFactory.Place(UiFactory.CreateText(safe, "SPEED", 34, Vector2.zero, new Vector2(300, 60), TextAlignmentOptions.Left),
                 new Vector2(0f, 0f), new Vector2(210f, 200f));
@@ -74,7 +85,58 @@ namespace NightCourier.UI
             hud._results = Panel(canvas.transform, "Shift over", out hud._resultsTitle, out hud._resultsBody);
             Button(hud._results.transform, "Ride again", -10f, () => hud.RetryPressed?.Invoke());
             Button(hud._results.transform, "Home", -200f, () => hud.HomePressed?.Invoke(), ButtonStyle.Secondary);
+
+            hud._levelUp = Panel(canvas.transform, "Level up!", out _, out _);
+            var levelCard = hud._levelUp.transform.Find("Card");
+            for (int i = 0; i < LevelUpRoller.Cards; i++)
+            {
+                int index = i;
+                float y = 160f - i * 240f;
+                hud._cards[i] = UiFactory.CreateButton(levelCard, "Card", new Vector2(0f, y), new Vector2(700f, 150f),
+                    () => hud._pick?.Invoke(index), ButtonStyle.Secondary);
+                hud._cards[i].name = "Card " + i;
+                hud._cardTitles[i] = hud._cards[i].GetComponentInChildren<TextMeshProUGUI>();
+                hud._cardLines[i] = UiFactory.CreateText(levelCard, "", 34, new Vector2(0f, y - 105f), new Vector2(700f, 60f));
+                hud._cardLines[i].color = UiFactory.Muted;
+            }
+
             return hud;
+        }
+
+        public void SetLevel(int level, float xpFraction)
+        {
+            SetWidth(_xpFill, BarWidth, xpFraction);
+            _level.text = $"{UiFactory.Localize("Lv")} {level}";
+        }
+
+        /// <summary>Shows the cards for the first pending level-up; <paramref name="pick"/> gets the chosen index.</summary>
+        public void ShowLevelUp(Ride ride, Action<int> pick)
+        {
+            _pick = pick;
+            for (int i = 0; i < LevelUpRoller.Cards; i++)
+            {
+                bool shown = i < ride.OfferCount;
+                _cards[i].gameObject.SetActive(shown);
+                _cardLines[i].gameObject.SetActive(shown);
+                if (shown)
+                {
+                    var item = ride.Offer[i];
+                    int level = ride.Loadout.Level(item);
+                    string tag = level == 0 ? UiFactory.Localize("NEW") : $"{UiFactory.Localize("Lv")} {level} → {level + 1}";
+                    _cardTitles[i].text = $"{UiFactory.Localize(ItemText.Name(item))}  <size=70%>{tag}</size>";
+                    _cardLines[i].text = UiFactory.Localize(ItemText.Line(item));
+                }
+            }
+
+            _levelUp.SetActive(true);
+            Joystick.Release();
+            Joystick.enabled = false;
+        }
+
+        public void HideLevelUp()
+        {
+            _levelUp.SetActive(false);
+            Joystick.enabled = true;
         }
 
         public void SetTime(float seconds)

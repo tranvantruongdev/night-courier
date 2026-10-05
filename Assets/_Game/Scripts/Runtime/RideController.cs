@@ -43,7 +43,7 @@ namespace NightCourier
         /// <summary>Profiling: ride with exactly this many drones and no damage (0 = a normal ride). Dev builds offer 100/300/500.</summary>
         public static int StressDrones;
 
-        private readonly List<RideEvent> _events = new List<RideEvent>(64);
+        private readonly List<RideEvent> _events = new List<RideEvent>(256);
         private StateMachine<Phase> _phase;
         private Ride _ride;
         private Camera _camera;
@@ -51,12 +51,18 @@ namespace NightCourier
         private Transform _ground;
         private BikeView _bikeView;
         private SwarmView _swarmView;
+        private WeaponsView _weaponsView;
         private RideHud _hud;
         private AudioService _audio;
         private AudioClip _hitSound;
         private AudioClip _dodgeSound;
         private AudioClip _crashSound;
+        private AudioClip _killSound;
+        private AudioClip _collectSound;
+        private AudioClip _levelSound;
+        private AudioClip _bellSound;
         private float _accumulator;
+        private bool _choosing;
 
         public Ride Ride => _ride;
         public bool IsOver => _phase != null && _phase.Current == Phase.Over;
@@ -77,6 +83,10 @@ namespace NightCourier
             _hitSound = ToneFactory.Blip("hit", 170f, 0.14f, 0.6f);
             _dodgeSound = ToneFactory.Blip("dodge", 1500f, 0.05f, 0.35f);
             _crashSound = ToneFactory.Blip("crash", 80f, 0.45f, 0.7f);
+            _killSound = ToneFactory.Blip("pop", 900f, 0.04f, 0.3f);
+            _collectSound = ToneFactory.Blip("parcel", 2100f, 0.03f, 0.2f);
+            _levelSound = ToneFactory.Blip("level", 660f, 0.25f, 0.5f);
+            _bellSound = ToneFactory.Blip("bell", 1320f, 0.35f, 0.45f);
 
             _camera = Camera.main;
             _camera.orthographic = true;
@@ -92,6 +102,7 @@ namespace NightCourier
             ground.sortingOrder = -10;
             _ground = ground.transform;
             _swarmView = new SwarmView(world);
+            _weaponsView = new WeaponsView(world);
             _bikeView = new BikeView(world);
 
             _hud = RideHud.Create(RideTuning.Default().dodgeSpeedFraction);
@@ -123,7 +134,9 @@ namespace NightCourier
 
             _ride = new Ride(tuning, (ulong)DateTime.UtcNow.Ticks);
             _accumulator = 0f;
+            _choosing = false;
             Time.timeScale = 1f;
+            _hud.HideLevelUp();
             _hud.HideResults();
             _hud.ShowPause(false);
             _phase.TryGo(Phase.Riding);
@@ -145,8 +158,24 @@ namespace NightCourier
                     _hud.HideHint();
                 }
 
+                while (Autopilot && _ride.PendingLevelUps > 0)
+                {
+                    _ride.Choose(0);
+                }
+
+                if (_ride.PendingLevelUps > 0)
+                {
+                    // The ride waits for a card; time spent choosing isn't owed back as a burst of steps.
+                    _accumulator = 0f;
+                    if (!_choosing)
+                    {
+                        _choosing = true;
+                        _hud.ShowLevelUp(_ride, OnCardPicked);
+                    }
+                }
+
                 _accumulator += Time.deltaTime;
-                while (_accumulator >= StepSeconds && !_ride.Over)
+                while (_accumulator >= StepSeconds && !_ride.Over && _ride.PendingLevelUps == 0)
                 {
                     _accumulator -= StepSeconds;
                     var stick = Autopilot ? RideBot.Steer(_ride) : new System.Numerics.Vector2(_hud.Joystick.Value.x, _hud.Joystick.Value.y);
@@ -162,7 +191,9 @@ namespace NightCourier
             var bike = _ride.Bike;
             _bikeView.Sync(bike, _ride.Invulnerable, Time.deltaTime);
             _swarmView.Sync(_ride.Swarm, new Vector2(bike.Position.X, bike.Position.Y));
+            _weaponsView.Sync(_ride, Time.deltaTime);
             _hud.SetTime(_ride.Time);
+            _hud.SetLevel(_ride.Level, _ride.Xp / (float)_ride.XpNeeded);
             _hud.SetHp(_ride.Hp / _ride.Tuning.maxHp);
             _hud.SetSpeed(bike.Speed / _ride.Tuning.maxSpeed, bike.CanDodge);
 
@@ -195,7 +226,33 @@ namespace NightCourier
                 case RideEventType.Died:
                     OnCrashed().Forget();
                     break;
+                case RideEventType.Killed:
+                    _audio.PlaySfx(_killSound, 0.5f, UnityEngine.Random.Range(0.85f, 1.2f));
+                    break;
+                case RideEventType.Collected:
+                    _audio.PlaySfx(_collectSound, 0.35f, UnityEngine.Random.Range(0.95f, 1.1f));
+                    break;
+                case RideEventType.LevelUp:
+                    _audio.PlaySfx(_levelSound);
+                    Haptics.Medium();
+                    break;
+                case RideEventType.BellRang:
+                    _weaponsView.RingBell(new Vector2(e.x, e.y), e.value);
+                    _audio.PlaySfx(_bellSound, 0.8f);
+                    break;
             }
+        }
+
+        private void OnCardPicked(int index)
+        {
+            if (!_choosing || index >= _ride.OfferCount)
+            {
+                return;
+            }
+
+            _ride.Choose(index);
+            _hud.HideLevelUp();
+            _choosing = false; // another pending level-up shows its cards next frame
         }
 
         private async UniTaskVoid OnCrashed()
@@ -248,6 +305,11 @@ namespace NightCourier
 
         private void OnBack()
         {
+            if (_choosing)
+            {
+                return; // the cards wait for a choice
+            }
+
             switch (_phase.Current)
             {
                 case Phase.Riding:
@@ -264,7 +326,7 @@ namespace NightCourier
 
         private void OnAppPause(bool paused)
         {
-            if (paused && _phase.Current == Phase.Riding)
+            if (paused && _phase.Current == Phase.Riding && !_choosing)
             {
                 Pause();
             }

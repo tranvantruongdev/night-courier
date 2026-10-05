@@ -56,19 +56,48 @@ namespace NightCourier.PlayModeTests
             Assert.AreEqual(pausedAt, ride.Time, "nothing moves while paused");
             Call(controller, "Resume");
 
+            // A level-up: a level's worth of XP under the wheels, the cards come up, the first one is tapped.
+            RideController.Autopilot = false;
+            ride.Parcels.Add(ride.Bike.Position.X, ride.Bike.Position.Y, ride.XpNeeded);
+            float waitedForCards = 0f;
+            while (ride.PendingLevelUps == 0 && waitedForCards < 2f)
+            {
+                waitedForCards += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.AreEqual(1, ride.PendingLevelUps, "collecting the XP levels up");
+            yield return new WaitForSecondsRealtime(0.4f);
+            Capture("4-level-up");
+            float frozenAt = ride.Time;
+            var picked = ride.Offer[0];
+            int levelBefore = ride.Loadout.Level(picked);
+            var card = FirstCard();
+            Assert.IsNotNull(card, "the level-up cards are on screen");
+            Assert.AreEqual(frozenAt, ride.Time, "the ride waits for a card");
+            card.onClick.Invoke();
+            Assert.AreEqual(levelBefore + 1, ride.Loadout.Level(picked));
+            yield return new WaitForSeconds(0.3f);
+            Assert.Greater(ride.Time, frozenAt, "the ride carries on after the pick");
+
             // Let go of the stick: riding straight into the swarm ends the shift. Fast-forward to get there.
             RideController.Autopilot = false;
             Time.timeScale = 4f;
             float waited = 0f;
             while (!controller.IsOver && waited < 30f)
             {
+                if (ride.PendingLevelUps > 0)
+                {
+                    FirstCard()?.onClick.Invoke(); // keep riding through level-ups
+                }
+
                 waited += Time.unscaledDeltaTime;
                 yield return null;
             }
 
             Assert.IsTrue(controller.IsOver, $"riding straight should crash; HP {ride.Hp} after {ride.Time:0.0} s");
             yield return new WaitForSecondsRealtime(1.2f); // slow motion, then the results
-            Capture("4-results");
+            Capture("5-results");
             var save = Services.Get<SaveService>().Data;
             Assert.Greater(save.totalRuns, 0, "the ride should be saved");
             Assert.GreaterOrEqual(save.bestScore, (int)ride.Time, "the best time covers this ride");
@@ -89,14 +118,18 @@ namespace NightCourier.PlayModeTests
             }
 
             Debug.Log($"[Smoke] 300 drones in the editor: {seconds * 1000f / frames:0.0} ms per frame over {frames} frames");
-            Capture("5-stress-300");
+            Capture("6-stress-300");
             Assert.IsFalse(controller.IsOver, "stress rides take no damage");
 
             Services.Get<GameFlow>().GoToAsync(AppState.Title).Forget();
             yield return WaitForScene("Title", 20f);
             yield return new WaitForSeconds(0.6f);
-            Capture("6-title-after-ride");
+            Capture("7-title-after-ride");
         }
+
+        private static UnityEngine.UI.Button FirstCard() =>
+            System.Linq.Enumerable.FirstOrDefault(Object.FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None),
+                b => b.name == "Card 0" && b.gameObject.activeInHierarchy);
 
         private static IEnumerator WaitForScene(string name, float timeout)
         {

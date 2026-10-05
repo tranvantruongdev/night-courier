@@ -65,6 +65,41 @@ namespace NightCourier.Core
         public int targetEnemies = 300;
         public float haulerShare = 0.25f;
 
+        // Weapons: level-1 values, plus the per-level step for each level above 1.
+        public float headlightRange = 3.5f;
+        public float headlightRangePerLevel = 0.3f;
+        public float headlightHalfAngle = 22f;
+        public float headlightHalfAnglePerLevel = 5f;
+        public float headlightDps = 24f;
+        public float headlightDpsPerLevel = 6f;
+
+        /// <summary>Blades = level + 1, orbiting the bike.</summary>
+        public float spokeOrbit = 1.5f;
+        public float spokeTurnRate = 240f;
+        public float spokeRadius = 0.35f;
+        public float spokeDps = 30f;
+        public float spokeDpsPerLevel = 6f;
+
+        public float bellCooldown = 3f;
+        public float bellRadius = 2.2f;
+        public float bellRadiusPerLevel = 0.3f;
+        public float bellDamage = 18f;
+        public float bellDamagePerLevel = 8f;
+        public float bellKnockback = 1.2f;
+
+        // Passives, per level
+        public float basketMagnetPerLevel = 0.25f;
+        public float gearCooldownPerLevel = 0.08f;
+        public float helmetArmourPerLevel = 0.08f;
+
+        // Parcels (XP drops)
+        public int maxParcels = 400;
+        public float magnetRadius = 1.5f;
+        public float parcelPullSpeed = 9f;
+        public float collectRadius = 0.45f;
+        public int scoutXp = 2;
+        public int haulerXp = 5;
+
         public EnemyStats Stats(EnemyKind kind) => kind == EnemyKind.Hauler ? hauler : scout;
 
         public float MaxEnemyRadius => Math.Max(scout.radius, hauler.radius);

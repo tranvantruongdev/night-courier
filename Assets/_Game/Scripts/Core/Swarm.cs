@@ -19,6 +19,7 @@ namespace NightCourier.Core
         private readonly RideTuning _t;
         private readonly float[] _pushX;
         private readonly float[] _pushY;
+        // ponytail: candidates past 256 per drone are skipped (only in extreme piles: less push, no error); grow it if drones visibly stack.
         private readonly int[] _neighbours = new int[256];
 
         public Swarm(RideTuning tuning)

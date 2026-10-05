@@ -12,21 +12,27 @@ namespace NightCourier.Core.Tests
         private const float Dt = 1f / 120f;
         private static readonly Vector2 Up = new Vector2(0f, 1f);
 
-        /// <summary>No automatic spawning, so a test places its own drones.</summary>
-        private static RideTuning Quiet()
+        /// <summary>No automatic spawning and a harmless headlight, so a test places its own drones.</summary>
+        internal static RideTuning Quiet()
         {
             var t = RideTuning.Default();
             t.startEnemies = 0;
             t.enemiesPerSecond = 0f;
+            t.headlightDps = 0f;
             return t;
         }
 
-        private static List<RideEvent> Run(Ride ride, float seconds, Func<Ride, Vector2> stick)
+        /// <summary>Steps the ride, taking the first card at every level-up.</summary>
+        internal static List<RideEvent> Run(Ride ride, float seconds, Func<Ride, Vector2> stick)
         {
             var events = new List<RideEvent>();
             for (int i = 0; i < (int)MathF.Round(seconds / Dt); i++)
             {
                 ride.Step(Dt, stick(ride), events);
+                while (ride.PendingLevelUps > 0)
+                {
+                    ride.Choose(0);
+                }
             }
 
             return events;
