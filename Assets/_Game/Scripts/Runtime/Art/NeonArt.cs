@@ -9,7 +9,6 @@ namespace NightCourier.Art
         public static readonly Color Night = Hex(0x0B1026);
         public static readonly Color Road = Hex(0x141C3D);
         public static readonly Color RoadLine = Hex(0x26336A);
-        public static readonly Color Window = Hex(0x3EF2FF, 0.55f);
         public static readonly Color Bike = Hex(0x3EF2FF);
         public static readonly Color Bonus = Hex(0xFFD23E);
         public static readonly Color Scout = Hex(0xFF5A4E);
@@ -32,7 +31,6 @@ namespace NightCourier.Art
         private static Sprite _scout;
         private static Sprite _hauler;
         private static Sprite _dot;
-        private static Sprite _ground;
 
         /// <summary>The bike seen from above, pointing right: about 1 unit long.</summary>
         public static Sprite Bike => _bike != null ? _bike : (_bike = Shape(64, 1.4f, (x, y) =>
@@ -49,11 +47,57 @@ namespace NightCourier.Art
         /// <summary>Soft round glow, 1 unit across.</summary>
         public static Sprite Dot => _dot != null ? _dot : (_dot = Shape(32, 1f, (x, y) => Mathf.Sqrt(x * x + y * y) - 0.25f));
 
+
         /// <summary>
-        /// One 8 × 8 unit city block: dark lots, lighter roads with lane marks, a few lit windows. Tiles seamlessly;
-        /// use it with <see cref="SpriteDrawMode.Tiled"/>.
+        /// Map 1, Market Street: one 16 × 16 unit tile with a 4-unit avenue, rows of stalls under striped awnings
+        /// and strings of warm lanterns across the side streets. Tiles seamlessly; use it with Tiled draw mode.
         /// </summary>
-        public static Sprite Ground => _ground != null ? _ground : (_ground = DrawGround());
+        public static Sprite MarketStreet => _market != null ? _market : (_market = DrawMarketStreet());
+
+        private static Sprite _market;
+
+        private static Sprite DrawMarketStreet()
+        {
+            const int size = 256; // 16 pixels per unit
+            var pixels = new Color32[size * size];
+            Color awningA = Palette.Hex(0x8A2E4F), awningB = Palette.Hex(0x2E5E8A), lantern = Palette.Hex(0xFFB347);
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    bool avenue = x < 64;                 // 4-unit avenue running north-south
+                    bool street = y % 64 < 16;            // 1-unit side street every 4 units
+                    Color c = avenue || street ? Palette.Road : Palette.Night;
+                    if (avenue && (x == 31 || x == 32) && (y / 8) % 2 == 0)
+                    {
+                        c = Palette.RoadLine; // centre line
+                    }
+                    else if (!avenue && !street)
+                    {
+                        // Stalls: 3 × 2 unit blocks with a striped awning along the street edge.
+                        int sx = (x - 64) % 48, sy = y % 64 - 16; // 4 stalls fill the 192 px beside the avenue
+                        bool stall = sx >= 4 && sx < 44 && sy >= 6 && sy < 42;
+                        bool awning = stall && sy < 14;
+                        if (awning)
+                        {
+                            c = ((x - 64) / 6) % 2 == 0 ? awningA : awningB;
+                        }
+                        else if (stall)
+                        {
+                            c = Color.Lerp(Palette.Night, Palette.RoadLine, 0.45f);
+                        }
+                    }
+                    else if (street && !avenue && (y % 64 == 8) && x % 16 < 3)
+                    {
+                        c = lantern; // a string of lanterns down the middle of the side street
+                    }
+
+                    pixels[y * size + x] = c;
+                }
+            }
+
+            return Make(pixels, size, size, 16f, TextureWrapMode.Repeat);
+        }
 
         /// <summary>Thin glowing ring, 2 units across (radius 1): scale it to a radius.</summary>
         public static Sprite Ring => _ring != null ? _ring : (_ring = Shape(64, 2.3f, (x, y) => Mathf.Abs(Mathf.Sqrt(x * x + y * y) - 0.87f) - 0.025f));
@@ -109,34 +153,6 @@ namespace NightCourier.Art
             }
 
             return Make(pixels, size, size, size / units, TextureWrapMode.Clamp);
-        }
-
-        private static Sprite DrawGround()
-        {
-            const int size = 128; // 16 pixels per unit
-            var pixels = new Color32[size * size];
-            var rng = new System.Random(7);
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    bool road = x < 20 || y < 20;
-                    bool lane = (x == 9 || x == 10) && (y / 6) % 2 == 0 || (y == 9 || y == 10) && (x / 6) % 2 == 0;
-                    Color c = road ? Palette.Road : Palette.Night;
-                    if (lane)
-                    {
-                        c = Palette.RoadLine;
-                    }
-                    else if (!road && x % 12 == 2 && y % 10 == 4 && rng.NextDouble() < 0.35)
-                    {
-                        c = Color.Lerp(Palette.Night, Palette.Window, 0.5f);
-                    }
-
-                    pixels[y * size + x] = c;
-                }
-            }
-
-            return Make(pixels, size, size, 16f, TextureWrapMode.Repeat);
         }
 
         private static Sprite Make(Color32[] pixels, int w, int h, float pixelsPerUnit, TextureWrapMode wrap, Vector2? pivot = null)

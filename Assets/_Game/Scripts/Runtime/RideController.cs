@@ -25,7 +25,7 @@ namespace NightCourier
         private const float StepSeconds = 1f / 120f;
         private const float LookAheadSeconds = 0.45f;
         private const float CameraSmoothing = 0.3f;
-        private const float GroundTile = 8f;
+        private const float GroundTile = 16f;
 
         private static readonly int[] StressCounts = { 0, 100, 300, 500 };
         private static readonly string[] StressLabels = { "Normal ride", "Stress 100", "Stress 300", "Stress 500" };
@@ -96,9 +96,9 @@ namespace NightCourier
             var world = new GameObject("World").transform;
             var ground = new GameObject("Ground").AddComponent<SpriteRenderer>();
             ground.transform.SetParent(world, false);
-            ground.sprite = NeonArt.Ground;
+            ground.sprite = NeonArt.MarketStreet; // map 1
             ground.drawMode = SpriteDrawMode.Tiled;
-            ground.size = new Vector2(GroundTile * 6f, GroundTile * 6f);
+            ground.size = new Vector2(GroundTile * 3f, GroundTile * 3f);
             ground.sortingOrder = -10;
             _ground = ground.transform;
             _swarmView = new SwarmView(world);
