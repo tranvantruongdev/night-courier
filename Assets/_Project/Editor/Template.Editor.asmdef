@@ -4,6 +4,7 @@
     "references": [
         "Template.Core",
         "Template.Runtime",
+        "NightCourier.Runtime",
         "Unity.InputSystem",
         "Unity.TextMeshPro",
         "Unity.TextMeshPro.Editor"

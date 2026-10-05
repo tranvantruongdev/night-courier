@@ -47,14 +47,11 @@ namespace Template.EditorTools.Setup
         public static void ApplyPlayerSettings()
         {
             PlayerSettings.companyName = "Tran Van Truong";
-            if (string.IsNullOrEmpty(PlayerSettings.productName) || PlayerSettings.productName == "unity-mobile-template")
-            {
-                PlayerSettings.productName = "Unity Mobile Template";
-            }
+            PlayerSettings.productName = "Night Courier";
 
-            // Change per game, e.g. com.tranvantruong.cadenceclub. Must be unique on Google Play.
-            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.tranvantruong.template");
-            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Standalone, "com.tranvantruong.template");
+            // Must be unique on Google Play.
+            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.tranvantruong.nightcourier");
+            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Standalone, "com.tranvantruong.nightcourier");
 
             // Portrait phone game.
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
@@ -84,7 +81,7 @@ namespace Template.EditorTools.Setup
             Directory.CreateDirectory(ScenesFolder);
             string boot = CreateScene("Boot", typeof(GameBootstrap));
             string title = CreateScene("Title", typeof(TitleController));
-            string game = CreateScene("Game", typeof(SampleGameController));
+            string game = CreateScene("Game", typeof(NightCourier.RideController));
 
             EditorBuildSettings.scenes = new[]
             {

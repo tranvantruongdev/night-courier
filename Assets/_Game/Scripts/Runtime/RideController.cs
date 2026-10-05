@@ -1,0 +1,303 @@
+using System;
+using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
+using NightCourier.Art;
+using NightCourier.Core;
+using NightCourier.UI;
+using NightCourier.View;
+using Template.Core.Flow;
+using Template.Core.Save;
+using Template.Feel;
+using Template.Game.Flow;
+using Template.Infra;
+using Template.Infra.Audio;
+using Template.Infra.Device;
+using UnityEngine;
+
+namespace NightCourier
+{
+    /// <summary>
+    /// The Game scene: owns one <see cref="Ride"/>, steps it at a fixed rate with the joystick (or the autopilot),
+    /// and turns ride events into sound, haptics and HUD updates. The camera leads the bike by its velocity.
+    /// </summary>
+    public sealed class RideController : MonoBehaviour
+    {
+        private const float StepSeconds = 1f / 120f;
+        private const float LookAheadSeconds = 0.45f;
+        private const float CameraSmoothing = 0.3f;
+        private const float GroundTile = 8f;
+
+        private static readonly int[] StressCounts = { 0, 100, 300, 500 };
+        private static readonly string[] StressLabels = { "Normal ride", "Stress 100", "Stress 300", "Stress 500" };
+
+        private enum Phase
+        {
+            Riding,
+            Paused,
+            Over,
+        }
+
+        /// <summary>Tests and trailer shots: the bot steers instead of the joystick.</summary>
+        public static bool Autopilot;
+
+        /// <summary>Profiling: ride with exactly this many drones and no damage (0 = a normal ride). Dev builds offer 100/300/500.</summary>
+        public static int StressDrones;
+
+        private readonly List<RideEvent> _events = new List<RideEvent>(64);
+        private StateMachine<Phase> _phase;
+        private Ride _ride;
+        private Camera _camera;
+        private Vector3 _cameraVelocity;
+        private Transform _ground;
+        private BikeView _bikeView;
+        private SwarmView _swarmView;
+        private RideHud _hud;
+        private AudioService _audio;
+        private AudioClip _hitSound;
+        private AudioClip _dodgeSound;
+        private AudioClip _crashSound;
+        private float _accumulator;
+
+        public Ride Ride => _ride;
+        public bool IsOver => _phase != null && _phase.Current == Phase.Over;
+
+        private void Start()
+        {
+            if (!BootGuard.EnsureBooted())
+            {
+                return;
+            }
+
+            _phase = new StateMachine<Phase>(Phase.Riding)
+                .Allow(Phase.Riding, Phase.Paused, Phase.Over)
+                .Allow(Phase.Paused, Phase.Riding)
+                .Allow(Phase.Over, Phase.Riding);
+
+            _audio = Services.Get<AudioService>();
+            _hitSound = ToneFactory.Blip("hit", 170f, 0.14f, 0.6f);
+            _dodgeSound = ToneFactory.Blip("dodge", 1500f, 0.05f, 0.35f);
+            _crashSound = ToneFactory.Blip("crash", 80f, 0.45f, 0.7f);
+
+            _camera = Camera.main;
+            _camera.orthographic = true;
+            _camera.orthographicSize = 8f;
+            _camera.backgroundColor = Palette.Night;
+
+            var world = new GameObject("World").transform;
+            var ground = new GameObject("Ground").AddComponent<SpriteRenderer>();
+            ground.transform.SetParent(world, false);
+            ground.sprite = NeonArt.Ground;
+            ground.drawMode = SpriteDrawMode.Tiled;
+            ground.size = new Vector2(GroundTile * 6f, GroundTile * 6f);
+            ground.sortingOrder = -10;
+            _ground = ground.transform;
+            _swarmView = new SwarmView(world);
+            _bikeView = new BikeView(world);
+
+            _hud = RideHud.Create(RideTuning.Default().dodgeSpeedFraction);
+            _hud.PausePressed += Pause;
+            _hud.ResumePressed += Resume;
+            _hud.RetryPressed += NewRide;
+            _hud.HomePressed += GoHome;
+            AppLifecycle.BackPressed += OnBack;
+            AppLifecycle.PauseChanged += OnAppPause;
+
+            NewRide();
+        }
+
+        private void OnDestroy()
+        {
+            AppLifecycle.BackPressed -= OnBack;
+            AppLifecycle.PauseChanged -= OnAppPause;
+            Time.timeScale = 1f;
+        }
+
+        private void NewRide()
+        {
+            var tuning = RideTuning.Default();
+            if (StressDrones > 0)
+            {
+                tuning.startEnemies = tuning.targetEnemies = StressDrones;
+                tuning.maxHp = float.MaxValue;
+            }
+
+            _ride = new Ride(tuning, (ulong)DateTime.UtcNow.Ticks);
+            _accumulator = 0f;
+            Time.timeScale = 1f;
+            _hud.HideResults();
+            _hud.ShowPause(false);
+            _phase.TryGo(Phase.Riding);
+            _camera.transform.position = CameraTarget();
+            _cameraVelocity = Vector3.zero;
+        }
+
+        private void Update()
+        {
+            if (_ride == null)
+            {
+                return;
+            }
+
+            if (_phase.Current == Phase.Riding)
+            {
+                if (Autopilot || _hud.Joystick.Touched)
+                {
+                    _hud.HideHint();
+                }
+
+                _accumulator += Time.deltaTime;
+                while (_accumulator >= StepSeconds && !_ride.Over)
+                {
+                    _accumulator -= StepSeconds;
+                    var stick = Autopilot ? RideBot.Steer(_ride) : new System.Numerics.Vector2(_hud.Joystick.Value.x, _hud.Joystick.Value.y);
+                    _events.Clear();
+                    _ride.Step(StepSeconds, stick, _events);
+                    foreach (var e in _events)
+                    {
+                        Handle(e);
+                    }
+                }
+            }
+
+            var bike = _ride.Bike;
+            _bikeView.Sync(bike, _ride.Invulnerable, Time.deltaTime);
+            _swarmView.Sync(_ride.Swarm, new Vector2(bike.Position.X, bike.Position.Y));
+            _hud.SetTime(_ride.Time);
+            _hud.SetHp(_ride.Hp / _ride.Tuning.maxHp);
+            _hud.SetSpeed(bike.Speed / _ride.Tuning.maxSpeed, bike.CanDodge);
+
+            _camera.transform.position = Vector3.SmoothDamp(_camera.transform.position, CameraTarget(), ref _cameraVelocity, CameraSmoothing);
+            Vector3 c = _camera.transform.position;
+            _ground.position = new Vector3(Mathf.Round(c.x / GroundTile) * GroundTile, Mathf.Round(c.y / GroundTile) * GroundTile, 0f);
+        }
+
+        private Vector3 CameraTarget()
+        {
+            var bike = _ride.Bike;
+            var lead = bike.Position + bike.Velocity * LookAheadSeconds;
+            return new Vector3(lead.X, lead.Y, -10f);
+        }
+
+        private void Handle(RideEvent e)
+        {
+            switch (e.type)
+            {
+                case RideEventType.Hit:
+                    _audio.PlaySfx(_hitSound, 1f, UnityEngine.Random.Range(0.9f, 1.1f));
+                    Haptics.Medium();
+                    _hud.FlashHurt();
+                    JuiceFx.Shake(_camera.transform, 0.15f, 0.2f);
+                    break;
+                case RideEventType.Dodged:
+                    _audio.PlaySfx(_dodgeSound, 0.8f);
+                    Haptics.Light();
+                    break;
+                case RideEventType.Died:
+                    OnCrashed().Forget();
+                    break;
+            }
+        }
+
+        private async UniTaskVoid OnCrashed()
+        {
+            _phase.Go(Phase.Over);
+            _audio.PlaySfx(_crashSound);
+            Haptics.Heavy();
+
+            // A moment of slow motion, then the results.
+            Time.timeScale = JuiceFx.ReduceMotion ? 1f : 0.3f;
+            await UniTask.Delay(TimeSpan.FromSeconds(0.7f), ignoreTimeScale: true, cancellationToken: this.GetCancellationTokenOnDestroy());
+            Time.timeScale = 1f;
+
+            var save = Services.Get<SaveService>();
+            int seconds = (int)_ride.Time;
+            bool newBest = seconds > save.Data.bestScore;
+            save.Data.bestScore = Math.Max(save.Data.bestScore, seconds);
+            save.Data.totalRuns++;
+            save.MarkDirty();
+            save.Save();
+
+            string best = newBest ? Loc("New best!") : $"{Loc("Best")} {Clock(save.Data.bestScore)}";
+            _hud.ShowResults("Shift over", $"{Loc("Survived")} {Clock(seconds)}\n{best}");
+        }
+
+        private static string Loc(string text) => Template.UI.UiFactory.Localize(text);
+
+        private static string Clock(int seconds) => $"{seconds / 60}:{seconds % 60:00}";
+
+        private void Pause()
+        {
+            if (_phase.TryGo(Phase.Paused))
+            {
+                Time.timeScale = 0f;
+                _hud.ShowPause(true);
+            }
+        }
+
+        private void Resume()
+        {
+            if (_phase.Current != Phase.Paused)
+            {
+                return;
+            }
+
+            Time.timeScale = 1f;
+            _hud.ShowPause(false);
+            _phase.Go(Phase.Riding);
+        }
+
+        private void OnBack()
+        {
+            switch (_phase.Current)
+            {
+                case Phase.Riding:
+                    Pause();
+                    break;
+                case Phase.Paused:
+                    Resume();
+                    break;
+                case Phase.Over:
+                    GoHome();
+                    break;
+            }
+        }
+
+        private void OnAppPause(bool paused)
+        {
+            if (paused && _phase.Current == Phase.Riding)
+            {
+                Pause();
+            }
+        }
+
+        private void GoHome()
+        {
+            Time.timeScale = 1f;
+            Services.Get<GameFlow>().GoToAsync(AppState.Title).Forget();
+        }
+
+        private void OnGUI()
+        {
+            if (!Debug.isDebugBuild)
+            {
+                return;
+            }
+
+            // Profiling rides for the phone: fixed drone counts, no damage. Bottom-right, away from the gauge.
+            float scale = Mathf.Max(1f, Screen.dpi / 160f);
+            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+            float w = Screen.width / scale, h = Screen.height / scale;
+            GUILayout.BeginArea(new Rect(w - 130f, h - 150f, 120f, 140f));
+            for (int i = 0; i < StressCounts.Length; i++)
+            {
+                if (GUILayout.Button(StressLabels[i]))
+                {
+                    StressDrones = StressCounts[i];
+                    NewRide();
+                }
+            }
+
+            GUILayout.EndArea();
+        }
+    }
+}
