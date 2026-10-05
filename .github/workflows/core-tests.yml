@@ -17,3 +17,5 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Template core
         run: dotnet test Tools/CoreTests/Template.Core.Tests.csproj --nologo
+      - name: Night Courier ride rules and swarm budget
+        run: dotnet test Tools/GameTests/NightCourier.Core.Tests.csproj --nologo
