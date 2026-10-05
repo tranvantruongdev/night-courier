@@ -236,6 +236,10 @@ namespace NightCourier
                     _audio.PlaySfx(_levelSound);
                     Haptics.Medium();
                     break;
+                case RideEventType.WhipCracked:
+                    _weaponsView.CrackWhip(new Vector2(e.x, e.y), e.value, _ride.Arsenal.WhipRange);
+                    _audio.PlaySfx(_dodgeSound, 0.5f, 0.6f);
+                    break;
                 case RideEventType.BellRang:
                     _weaponsView.RingBell(new Vector2(e.x, e.y), e.value);
                     _audio.PlaySfx(_bellSound, 0.8f);

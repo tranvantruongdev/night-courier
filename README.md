@@ -4,9 +4,9 @@
 Neon Ward glitched, and now the Swarm chases anything that stops moving. Kai, a night-shift courier on a
 fixed-gear bike, has to ride until dawn.
 
-> **Status (Oct 2026): week 2 of 5, in progress.** The bike, the swarm, three weapons (Headlight, Spoke Cards,
-> Bell), six passives, XP parcels and level-up cards work in Unity 6.3 LTS; three more weapons and the wave
-> director come next. 82 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
+> **Status (Oct 2026): week 2 of 5, in progress.** The bike, the swarm, five weapons (Headlight, Spoke Cards,
+> Bell, Chain Whip, Tyre Spikes), six passives, XP parcels and level-up cards work in Unity 6.3 LTS; the Pannier
+> Drone and the wave director come next. 84 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
 > levels up through the card popup, crashes, saves the result and runs a 300-drone stress ride. The
 > screenshots below come from that test.
 
@@ -32,7 +32,8 @@ fixed-gear bike, has to ride until dawn.
   the hits miss you.
 - Scouts are fast and weak, haulers slow and heavy. A hit costs HP and gives 0.5 s of invulnerability.
 - Weapons fire on their own: the **Headlight** burns drones in a cone ahead, **Spoke Cards** orbit the bike,
-  the **Bell** knocks back everything around. Drones drop parcels; collect XP to level up and pick 1 of 3
+  the **Bell** knocks back everything around, the **Chain Whip** lashes the side you turn toward, and
+  **Tyre Spikes** leave a burning trail that lasts longer the faster you ride. Drones drop parcels; collect XP to level up and pick 1 of 3
   cards (items you own come up more often).
 
 ## How it's built
@@ -65,7 +66,7 @@ dotnet test Tools/CoreTests/Template.Core.Tests.csproj       # template core
 In Unity (headless, Windows):
 
 ```bash
-powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 82 EditMode tests
+powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 84 EditMode tests
 powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1 -TestPlatform PlayMode -Graphics   # smoke test + screenshots in Logs/screenshots
 ```
 

@@ -14,6 +14,7 @@ namespace NightCourier.Core
         Collected,
         LevelUp,
         BellRang,
+        WhipCracked,
     }
 
     /// <summary>Something the view should react to (sound, haptics, flash, text).</summary>
@@ -23,7 +24,7 @@ namespace NightCourier.Core
         public float x;
         public float y;
 
-        /// <summary>Damage for Hit, XP for Collected, the new level for LevelUp, the radius for BellRang.</summary>
+        /// <summary>Damage for Hit, XP for Collected, the new level for LevelUp, the radius for BellRang, the arc's centre angle (radians) for WhipCracked.</summary>
         public float value;
 
         public override string ToString() => $"{type}({value:0.#}) at {x:0.00},{y:0.00}";

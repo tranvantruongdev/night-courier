@@ -35,6 +35,9 @@ namespace NightCourier.Core
         /// <summary>How hard the bike turned last step, 0 (straight) to 1 (full rate).</summary>
         public float TurnAmount { get; private set; }
 
+        /// <summary>+1 turning left (counter-clockwise), -1 right, 0 about straight.</summary>
+        public int TurnSide { get; private set; }
+
         public Vector2 Forward => new Vector2(MathF.Cos(Heading), MathF.Sin(Heading));
         public Vector2 Velocity => Forward * Speed;
 
@@ -70,6 +73,7 @@ namespace NightCourier.Core
             bool wasBraking = Braking;
             Braking = false;
             TurnAmount = 0f;
+            TurnSide = 0;
 
             if (push > _t.stickDeadZone)
             {
@@ -89,6 +93,7 @@ namespace NightCourier.Core
                 float turn = Math.Clamp(delta, -maxTurn, maxTurn);
                 Heading = WrapAngle(Heading + turn);
                 TurnAmount = MathF.Abs(turn) / maxTurn;
+                TurnSide = TurnAmount > 0.05f ? Math.Sign(turn) : 0;
             }
 
             if (Braking)

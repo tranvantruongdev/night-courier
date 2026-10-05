@@ -87,6 +87,21 @@ namespace NightCourier.Core
         public float bellDamagePerLevel = 8f;
         public float bellKnockback = 1.2f;
 
+        /// <summary>Cracks on the side the bike turns toward (alternating when riding straight), a 120° arc.</summary>
+        public float whipCooldown = 1.2f;
+        public float whipRange = 2.2f;
+        public float whipRangePerLevel = 0.25f;
+        public float whipDamage = 16f;
+        public float whipDamagePerLevel = 7f;
+
+        /// <summary>Drops a spike every so often; each lasts longer the faster the bike went.</summary>
+        public float spikesEvery = 0.12f;
+        public float spikesLifeAtCruise = 1.2f;
+        public float spikesRadius = 0.4f;
+        public float spikesRadiusPerLevel = 0.05f;
+        public float spikesDps = 18f;
+        public float spikesDpsPerLevel = 6f;
+
         // Passives, per level
         public float basketMagnetPerLevel = 0.25f;
         public float gearCooldownPerLevel = 0.08f;

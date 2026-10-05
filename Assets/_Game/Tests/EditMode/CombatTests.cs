@@ -229,6 +229,40 @@ namespace NightCourier.Core.Tests
         }
 
         [Test]
+        public void TheWhipCracksOnTheSideTheBikeTurnsToward()
+        {
+            var t = Armed();
+            t.headlightDps = 0f;
+            t.whipCooldown = 0.05f;
+            var ride = new Ride(t, 1);
+            ride.Loadout.Upgrade(ItemKind.ChainWhip);
+            ride.Swarm.Spawn(EnemyKind.Hauler, -2f, 0f); // left of a bike heading up
+            ride.Swarm.Spawn(EnemyKind.Hauler, 2f, 0f);  // right
+
+            var events = RideTests.Run(ride, t.whipCooldown + Dt, r => new Vector2(-1f, 0.3f)); // steering left
+
+            Assert.That(events.Count(e => e.type == RideEventType.WhipCracked), Is.EqualTo(1));
+            Assert.That(ride.Swarm.Hp[0], Is.LessThan(t.hauler.hp));
+            Assert.That(ride.Swarm.Hp[1], Is.EqualTo(t.hauler.hp));
+        }
+
+        [Test]
+        public void TyreSpikesBurnWhatFollowsTheBike()
+        {
+            var t = Armed();
+            t.headlightDps = 0f;
+            var ride = new Ride(t, 1);
+            ride.Loadout.Upgrade(ItemKind.TyreSpikes);
+            RideTests.Run(ride, 1f, r => Vector2.Zero); // lays spikes from y = 0 to y = 4
+            ride.Swarm.Spawn(EnemyKind.Hauler, 0.2f, 3f); // on the trail, behind the bike
+
+            RideTests.Run(ride, 0.2f, r => Vector2.Zero);
+
+            Assert.That(ride.Arsenal.DamageBy[(int)ItemKind.TyreSpikes], Is.GreaterThan(0f));
+            Assert.That(ride.Swarm.Hp[0], Is.LessThan(t.hauler.hp));
+        }
+
+        [Test]
         public void LighterFrameRaisesTopSpeed()
         {
             var t = Armed();

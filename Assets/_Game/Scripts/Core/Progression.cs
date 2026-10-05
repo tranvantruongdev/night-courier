@@ -9,6 +9,8 @@ namespace NightCourier.Core
         Headlight,
         SpokeCards,
         Bell,
+        ChainWhip,
+        TyreSpikes,
         BigBasket,
         GearRatio,
         Helmet,
