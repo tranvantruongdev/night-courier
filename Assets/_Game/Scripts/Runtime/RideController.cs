@@ -112,7 +112,8 @@ namespace NightCourier
             _weaponsView = new WeaponsView(world);
             _bikeView = new BikeView(world);
 
-            _hud = RideHud.Create(RideTuning.Default().dodgeSpeedFraction);
+            var controls = Services.Get<SaveService>().Data.GetGame<GarageData>();
+            _hud = RideHud.Create(RideTuning.Default().dodgeSpeedFraction, controls.leftHanded, controls.joystickScale, controls.joystickOpacity);
             _hud.PausePressed += Pause;
             _hud.ResumePressed += Resume;
             _hud.RetryPressed += NewRide;

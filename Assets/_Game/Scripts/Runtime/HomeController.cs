@@ -34,6 +34,11 @@ namespace NightCourier
         private GameObject _codex;
         private TextMeshProUGUI _codexText;
         private GameObject _maps;
+        private GameObject _controls;
+        private Slider _sizeSlider;
+        private Slider _opacitySlider;
+        private Toggle _leftHanded;
+        private bool _loadingControls;
         private Button _harborButton;
         private TextMeshProUGUI _harborNote;
 
@@ -63,11 +68,13 @@ namespace NightCourier
                 OpenMaps);
             UiFactory.CreateButton(safe, "Garage", new Vector2(0, -240), new Vector2(560, 140), OpenGarage, ButtonStyle.Secondary);
             UiFactory.CreateButton(safe, "Codex", new Vector2(0, -400), new Vector2(560, 140), OpenCodex, ButtonStyle.Secondary);
-            UiFactory.CreateButton(safe, "Settings", new Vector2(0, -560), new Vector2(560, 140), () => OpenSettings().Forget(), ButtonStyle.Secondary);
+            UiFactory.CreateButton(safe, "Controls", new Vector2(0, -560), new Vector2(560, 140), OpenControls, ButtonStyle.Secondary);
+            UiFactory.CreateButton(safe, "Settings", new Vector2(0, -720), new Vector2(560, 140), () => OpenSettings().Forget(), ButtonStyle.Secondary);
 
             BuildGarage(canvas.transform);
             BuildCodex(canvas.transform);
             BuildMaps(canvas.transform);
+            BuildControls(canvas.transform);
             _settingsView = SettingsPanelView.Create(safe);
             _settingsView.CloseRequested += () => CloseSettings().Forget();
             Refresh();
@@ -106,6 +113,51 @@ namespace NightCourier
             UiFactory.CreateButton(card, "Close", new Vector2(0f, -465f), new Vector2(460f, 120f), () => _garage.SetActive(false), ButtonStyle.Secondary);
             _garage = root.gameObject;
             _garage.SetActive(false);
+        }
+
+        private void BuildControls(Transform canvas)
+        {
+            var root = UiFactory.CreateRect("Controls", canvas);
+            UiFactory.Stretch(root);
+            UiFactory.CreateOverlay(root);
+            var card = UiFactory.CreateCard(root, Vector2.zero, new Vector2(900f, 900f));
+            var heading = UiFactory.CreateText(card, "Controls", 70, new Vector2(0f, 350f), new Vector2(800f, 110f), font: UiFont.Display);
+            heading.color = UiFactory.Ink;
+            _sizeSlider = UiFactory.CreateSlider(card, "Joystick size", new Vector2(0f, 190f), _ => SaveControls());
+            _opacitySlider = UiFactory.CreateSlider(card, "Joystick opacity", new Vector2(0f, 10f), _ => SaveControls());
+            _leftHanded = UiFactory.CreateToggle(card, "Left-handed", new Vector2(0f, -160f), _ => SaveControls());
+            UiFactory.CreateButton(card, "Close", new Vector2(0f, -340f), new Vector2(460f, 120f), () => _controls.SetActive(false), ButtonStyle.Secondary);
+            _controls = root.gameObject;
+            _controls.SetActive(false);
+        }
+
+        // Slider 0..1 → joystick size 0.7–1.4× and opacity 30–100%.
+        private void OpenControls()
+        {
+            var data = Services.Get<SaveService>().Data.GetGame<GarageData>();
+            _loadingControls = true; // setting the controls fires their callbacks: don't save half-loaded values
+            _sizeSlider.value = Mathf.InverseLerp(0.7f, 1.4f, data.joystickScale);
+            _opacitySlider.value = Mathf.InverseLerp(0.3f, 1f, data.joystickOpacity);
+            _leftHanded.isOn = data.leftHanded;
+            _loadingControls = false;
+            _controls.SetActive(true);
+        }
+
+        private void SaveControls()
+        {
+            if (_loadingControls)
+            {
+                return;
+            }
+
+            var save = Services.Get<SaveService>();
+            var data = save.Data.GetGame<GarageData>();
+            data.joystickScale = Mathf.Lerp(0.7f, 1.4f, _sizeSlider.value);
+            data.joystickOpacity = Mathf.Lerp(0.3f, 1f, _opacitySlider.value);
+            data.leftHanded = _leftHanded.isOn;
+            save.Data.SetGame(data);
+            save.MarkDirty();
+            save.Save();
         }
 
         private void BuildMaps(Transform canvas)

@@ -46,6 +46,11 @@ namespace NightCourier.PlayModeTests
             Capture("1d-maps");
             ClickButton("Button Back");
             yield return new WaitForSecondsRealtime(0.2f);
+            ClickButton("Button Controls");
+            yield return new WaitForSecondsRealtime(0.3f);
+            Capture("1e-controls");
+            ClickButton("Button Close");
+            yield return new WaitForSecondsRealtime(0.2f);
             ClickButton("Button Codex");
             yield return new WaitForSecondsRealtime(0.3f);
             Capture("1c-codex");

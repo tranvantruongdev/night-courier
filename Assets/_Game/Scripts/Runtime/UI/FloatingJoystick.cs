@@ -12,7 +12,8 @@ namespace NightCourier.UI
     /// </summary>
     public sealed class FloatingJoystick : MonoBehaviour
     {
-        private const float Radius = 150f; // canvas units (1080 × 1920 reference)
+        private const float BaseRadius = 150f; // canvas units (1080 × 1920 reference)
+        private float _radius = BaseRadius;
 
         private RectTransform _area;
         private RectTransform _visual;
@@ -23,14 +24,16 @@ namespace NightCourier.UI
         public Vector2 Value { get; private set; }
         public bool Touched { get; private set; }
 
-        public static FloatingJoystick Create(RectTransform area)
+        public static FloatingJoystick Create(RectTransform area, float scale = 1f, float opacity = 1f)
         {
             var joystick = area.gameObject.AddComponent<FloatingJoystick>();
             joystick._area = area;
+            joystick._radius = BaseRadius * scale;
             joystick._visual = UiFactory.CreateRect("Joystick", area);
             joystick._visual.anchorMin = joystick._visual.anchorMax = new Vector2(0.5f, 0.5f);
-            UiFactory.CreateRounded(joystick._visual, Vector2.zero, Vector2.one * Radius * 2f, new Color(1f, 1f, 1f, 0.1f), (int)Radius);
-            joystick._knob = UiFactory.CreateRounded(joystick._visual, Vector2.zero, Vector2.one * 120f, new Color(0.25f, 0.95f, 1f, 0.55f), 60)
+            UiFactory.CreateRounded(joystick._visual, Vector2.zero, Vector2.one * joystick._radius * 2f, new Color(1f, 1f, 1f, 0.1f), (int)joystick._radius);
+            joystick._visual.gameObject.AddComponent<CanvasGroup>().alpha = opacity;
+            joystick._knob = UiFactory.CreateRounded(joystick._visual, Vector2.zero, Vector2.one * 120f * scale, new Color(0.25f, 0.95f, 1f, 0.55f), (int)(60 * scale))
                 .rectTransform;
             joystick._visual.gameObject.SetActive(false);
             return joystick;
@@ -53,8 +56,8 @@ namespace NightCourier.UI
                 if (_dragging && pointer.press.isPressed)
                 {
                     Vector2 drag = ToLocal(pointer.position.ReadValue()) - _origin;
-                    Value = Vector2.ClampMagnitude(drag / Radius, 1f);
-                    _knob.anchoredPosition = Value * Radius;
+                    Value = Vector2.ClampMagnitude(drag / _radius, 1f);
+                    _knob.anchoredPosition = Value * _radius;
                     return;
                 }
 

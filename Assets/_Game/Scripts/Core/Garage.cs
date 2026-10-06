@@ -41,6 +41,11 @@ namespace NightCourier.Core
         public MapKind map;
         public int wonMaps;
 
+        // Controls (here because SaveData.game holds one object per game): joystick size and opacity, handedness.
+        public float joystickScale = 1f;
+        public float joystickOpacity = 1f;
+        public bool leftHanded;
+
         public bool CanRide(MapKind m) => m == MapKind.MarketStreet || (wonMaps & 1 << (int)(m - 1)) != 0;
 
         public bool Seen(ItemKind item) => (seenItems & (1 << (int)item)) != 0;

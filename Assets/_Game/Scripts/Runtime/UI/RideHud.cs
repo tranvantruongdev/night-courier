@@ -54,7 +54,8 @@ namespace NightCourier.UI
 
         public FloatingJoystick Joystick { get; private set; }
 
-        public static RideHud Create(float bonusFraction)
+        /// <param name="leftHanded">Mirror the corners: speed gauge bottom-right, pause top-left, away from the left thumb.</param>
+        public static RideHud Create(float bonusFraction, bool leftHanded = false, float joystickScale = 1f, float joystickOpacity = 1f)
         {
             var hud = new RideHud();
             UiFactory.EnsureEventSystem();
@@ -65,7 +66,9 @@ namespace NightCourier.UI
 
             var touch = UiFactory.CreateRect("Touch", canvas.transform);
             UiFactory.Stretch(touch);
-            hud.Joystick = FloatingJoystick.Create(touch);
+            hud.Joystick = FloatingJoystick.Create(touch, joystickScale, joystickOpacity);
+            var gaugeCorner = new Vector2(leftHanded ? 1f : 0f, 0f);
+            float gaugeLeft = leftHanded ? -60f - GaugeWidth : 60f; // the gauge's left edge from that corner
 
             var safe = UiFactory.CreateSafeArea(canvas.transform);
             hud._time = UiFactory.Place(UiFactory.CreateText(safe, "0:00", 76, Vector2.zero, new Vector2(400, 100)),
@@ -81,15 +84,15 @@ namespace NightCourier.UI
             hud._radio.alpha = 0f;
 
             var gaugeLabel = UiFactory.Place(UiFactory.CreateText(safe, "SPEED", 34, Vector2.zero, new Vector2(300, 60), TextAlignmentOptions.Left),
-                new Vector2(0f, 0f), new Vector2(210f, 200f));
+                gaugeCorner, new Vector2(gaugeLeft + 150f, 200f));
             gaugeLabel.color = new Color(1f, 1f, 1f, 0.6f);
-            hud._speedFillImage = Bar(safe, Vector2.zero, new Vector2(60f, 150f), GaugeWidth, 30f, Palette.Bike);
+            hud._speedFillImage = Bar(safe, gaugeCorner, new Vector2(gaugeLeft, 150f), GaugeWidth, 30f, Palette.Bike);
             hud._speedFill = hud._speedFillImage.rectTransform;
             var mark = UiFactory.CreateRounded(safe, Vector2.zero, new Vector2(6f, 46f), Palette.Bonus, 3);
-            UiFactory.Place(mark, Vector2.zero, new Vector2(60f + GaugeWidth * bonusFraction, 150f));
+            UiFactory.Place(mark, gaugeCorner, new Vector2(gaugeLeft + GaugeWidth * bonusFraction, 150f));
 
             UiFactory.Place(UiFactory.CreateIconButton(safe, UiTheme.Current.iconPause, Vector2.zero, 110f, () => hud.PausePressed?.Invoke(),
-                ButtonStyle.Glass, "II"), new Vector2(1f, 1f), new Vector2(-100f, -100f));
+                ButtonStyle.Glass, "II"), new Vector2(leftHanded ? 0f : 1f, 1f), new Vector2(leftHanded ? 100f : -100f, -100f));
 
             hud._hint = UiFactory.Place(UiFactory.CreateText(safe, "Drag to steer. You can't stop — keep moving!", 52, Vector2.zero,
                 new Vector2(900, 200)), new Vector2(0.5f, 0.3f), Vector2.zero);
