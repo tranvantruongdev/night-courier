@@ -41,6 +41,11 @@ namespace NightCourier.PlayModeTests
             Capture("1b-garage");
             ClickButton("Button Close");
             yield return new WaitForSecondsRealtime(0.2f);
+            ClickButton("Button Codex");
+            yield return new WaitForSecondsRealtime(0.3f);
+            Capture("1c-codex");
+            ClickButton("Button Close");
+            yield return new WaitForSecondsRealtime(0.2f);
 
             RideController.Autopilot = true;
             Services.Get<GameFlow>().GoToAsync(AppState.Game).Forget();

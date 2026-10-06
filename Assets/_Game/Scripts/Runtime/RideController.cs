@@ -343,6 +343,7 @@ namespace NightCourier
             int earned = Garage.CoinsFor(_ride);
             garage.coins += earned;
             garage.rodeOnce = true;
+            Garage.RecordCodex(garage, _ride.Loadout);
             save.Data.SetGame(garage);
             save.MarkDirty();
             save.Save();

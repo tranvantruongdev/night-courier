@@ -33,6 +33,13 @@ namespace NightCourier.Core
         /// <summary>The first shift has been ridden: no more first-run hints or the lighter first swarm.</summary>
         public bool rodeOnce;
 
+        /// <summary>Codex: bit per <see cref="ItemKind"/> ever picked up, and per weapon ever evolved.</summary>
+        public int seenItems;
+        public int seenEvolutions;
+
+        public bool Seen(ItemKind item) => (seenItems & (1 << (int)item)) != 0;
+        public bool SeenEvolution(ItemKind weapon) => (seenEvolutions & (1 << (int)weapon)) != 0;
+
         public int Level(GarageUpgrade upgrade) => levels != null && (int)upgrade < levels.Length ? levels[(int)upgrade] : 0;
         public bool Owns(BikeModel model) => model == BikeModel.Fixie || (ownedBikes & (1 << (int)model)) != 0;
     }
@@ -86,6 +93,24 @@ namespace NightCourier.Core
 
             data.bike = model;
             return true;
+        }
+
+        /// <summary>Adds what this ride's loadout held to the codex.</summary>
+        public static void RecordCodex(GarageData data, Loadout loadout)
+        {
+            for (int i = 0; i < Loadout.ItemCount; i++)
+            {
+                var item = (ItemKind)i;
+                if (loadout.Owns(item))
+                {
+                    data.seenItems |= 1 << i;
+                }
+
+                if (loadout.Evolved(item))
+                {
+                    data.seenEvolutions |= 1 << i;
+                }
+            }
         }
 
         /// <summary>A coin per 5 kills and per 10 seconds ridden, plus 100 for beating the boss.</summary>

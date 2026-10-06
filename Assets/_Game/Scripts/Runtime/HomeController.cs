@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using NightCourier.Art;
 using NightCourier.Core;
+using NightCourier.UI;
 using Template.Core.Save;
 using Template.Core.Settings;
 using Template.Game.Flow;
@@ -30,6 +31,8 @@ namespace NightCourier
         private static readonly BikeModel[] Bikes = { BikeModel.Fixie, BikeModel.Racer, BikeModel.Cargo };
         private readonly Button[] _bikeButtons = new Button[3];
         private TextMeshProUGUI _bikeLabel;
+        private GameObject _codex;
+        private TextMeshProUGUI _codexText;
 
         private void Start()
         {
@@ -55,10 +58,12 @@ namespace NightCourier
 
             UiFactory.CreateButton(safe, "Ride", new Vector2(0, -60), new Vector2(560, 170),
                 () => Services.Get<GameFlow>().GoToAsync(AppState.Game).Forget());
-            UiFactory.CreateButton(safe, "Garage", new Vector2(0, -260), new Vector2(560, 150), OpenGarage, ButtonStyle.Secondary);
-            UiFactory.CreateButton(safe, "Settings", new Vector2(0, -440), new Vector2(560, 150), () => OpenSettings().Forget(), ButtonStyle.Secondary);
+            UiFactory.CreateButton(safe, "Garage", new Vector2(0, -240), new Vector2(560, 140), OpenGarage, ButtonStyle.Secondary);
+            UiFactory.CreateButton(safe, "Codex", new Vector2(0, -400), new Vector2(560, 140), OpenCodex, ButtonStyle.Secondary);
+            UiFactory.CreateButton(safe, "Settings", new Vector2(0, -560), new Vector2(560, 140), () => OpenSettings().Forget(), ButtonStyle.Secondary);
 
             BuildGarage(canvas.transform);
+            BuildCodex(canvas.transform);
             _settingsView = SettingsPanelView.Create(safe);
             _settingsView.CloseRequested += () => CloseSettings().Forget();
             Refresh();
@@ -97,6 +102,50 @@ namespace NightCourier
             UiFactory.CreateButton(card, "Close", new Vector2(0f, -465f), new Vector2(460f, 120f), () => _garage.SetActive(false), ButtonStyle.Secondary);
             _garage = root.gameObject;
             _garage.SetActive(false);
+        }
+
+        private void BuildCodex(Transform canvas)
+        {
+            var root = UiFactory.CreateRect("Codex", canvas);
+            UiFactory.Stretch(root);
+            UiFactory.CreateOverlay(root);
+            var card = UiFactory.CreateCard(root, Vector2.zero, new Vector2(900f, 1300f));
+            var heading = UiFactory.CreateText(card, "Codex", 80, new Vector2(0f, 550f), new Vector2(800f, 120f), font: UiFont.Display);
+            heading.color = UiFactory.Ink;
+            _codexText = UiFactory.CreateText(card, "", 36, new Vector2(0f, 20f), new Vector2(800f, 900f), TextAlignmentOptions.TopLeft);
+            _codexText.color = UiFactory.Ink;
+            UiFactory.CreateButton(card, "Close", new Vector2(0f, -560f), new Vector2(460f, 120f), () => _codex.SetActive(false), ButtonStyle.Secondary);
+            _codex = root.gameObject;
+            _codex.SetActive(false);
+        }
+
+        /// <summary>Everything ever carried, by name ("???" until seen), then the evolutions with their recipes.</summary>
+        private void OpenCodex()
+        {
+            var data = Services.Get<SaveService>().Data.GetGame<GarageData>();
+            var text = new System.Text.StringBuilder();
+            text.Append("<b>").Append(UiFactory.Localize("Bike parts")).Append("</b>\n");
+            for (int i = 0; i < Loadout.ItemCount; i++)
+            {
+                var item = (ItemKind)i;
+                text.Append(data.Seen(item) ? UiFactory.Localize(ItemText.Name(item)) : "???").Append(i % 2 == 0 ? "\t\t" : "\n");
+            }
+
+            text.Append("\n<b>").Append(UiFactory.Localize("Evolutions")).Append("</b>\n");
+            for (int i = 0; i < Loadout.ItemCount; i++)
+            {
+                var weapon = (ItemKind)i;
+                if (Evolutions.PassiveFor(weapon) is ItemKind passive)
+                {
+                    string name = data.SeenEvolution(weapon) ? UiFactory.Localize(ItemText.EvolvedName(weapon)) : "???";
+                    text.Append(name).Append("  <size=80%><color=#666>")
+                        .Append(UiFactory.Localize(ItemText.Name(weapon))).Append(" Lv 5 + ").Append(UiFactory.Localize(ItemText.Name(passive)))
+                        .Append("</color></size>\n");
+                }
+            }
+
+            _codexText.text = text.ToString();
+            _codex.SetActive(true);
         }
 
         private static string Describe(GarageUpgrade upgrade) => upgrade switch

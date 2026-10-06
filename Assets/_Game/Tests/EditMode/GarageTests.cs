@@ -128,6 +128,32 @@ namespace NightCourier.Core.Tests
         }
 
         [Test]
+        public void TheCodexRemembersEverythingEverCarried()
+        {
+            var data = new GarageData();
+            var first = new Loadout();
+            first.Upgrade(ItemKind.Headlight);
+            first.Upgrade(ItemKind.Bell);
+            Garage.RecordCodex(data, first);
+
+            var second = new Loadout();
+            for (int i = 0; i < Loadout.MaxLevel; i++)
+            {
+                second.Upgrade(ItemKind.Headlight);
+            }
+
+            second.Upgrade(ItemKind.GearRatio);
+            second.Evolve(ItemKind.Headlight);
+            Garage.RecordCodex(data, second);
+
+            Assert.That(data.Seen(ItemKind.Bell), Is.True, "kept from the first ride");
+            Assert.That(data.Seen(ItemKind.GearRatio), Is.True);
+            Assert.That(data.Seen(ItemKind.Helmet), Is.False);
+            Assert.That(data.SeenEvolution(ItemKind.Headlight), Is.True);
+            Assert.That(data.SeenEvolution(ItemKind.Bell), Is.False);
+        }
+
+        [Test]
         public void TheFirstShiftIsLighter()
         {
             var first = RideTuning.Default();
