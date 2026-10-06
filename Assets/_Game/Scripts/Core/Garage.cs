@@ -37,6 +37,12 @@ namespace NightCourier.Core
         public int seenItems;
         public int seenEvolutions;
 
+        /// <summary>The map to ride, and a bit per map whose boss has been beaten (map 2 opens once map 1 is won).</summary>
+        public MapKind map;
+        public int wonMaps;
+
+        public bool CanRide(MapKind m) => m == MapKind.MarketStreet || (wonMaps & 1 << (int)(m - 1)) != 0;
+
         public bool Seen(ItemKind item) => (seenItems & (1 << (int)item)) != 0;
         public bool SeenEvolution(ItemKind weapon) => (seenEvolutions & (1 << (int)weapon)) != 0;
 

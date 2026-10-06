@@ -33,6 +33,9 @@ namespace NightCourier
         private TextMeshProUGUI _bikeLabel;
         private GameObject _codex;
         private TextMeshProUGUI _codexText;
+        private GameObject _maps;
+        private Button _harborButton;
+        private TextMeshProUGUI _harborNote;
 
         private void Start()
         {
@@ -57,13 +60,14 @@ namespace NightCourier
             _coins.color = Palette.Bonus;
 
             UiFactory.CreateButton(safe, "Ride", new Vector2(0, -60), new Vector2(560, 170),
-                () => Services.Get<GameFlow>().GoToAsync(AppState.Game).Forget());
+                OpenMaps);
             UiFactory.CreateButton(safe, "Garage", new Vector2(0, -240), new Vector2(560, 140), OpenGarage, ButtonStyle.Secondary);
             UiFactory.CreateButton(safe, "Codex", new Vector2(0, -400), new Vector2(560, 140), OpenCodex, ButtonStyle.Secondary);
             UiFactory.CreateButton(safe, "Settings", new Vector2(0, -560), new Vector2(560, 140), () => OpenSettings().Forget(), ButtonStyle.Secondary);
 
             BuildGarage(canvas.transform);
             BuildCodex(canvas.transform);
+            BuildMaps(canvas.transform);
             _settingsView = SettingsPanelView.Create(safe);
             _settingsView.CloseRequested += () => CloseSettings().Forget();
             Refresh();
@@ -102,6 +106,49 @@ namespace NightCourier
             UiFactory.CreateButton(card, "Close", new Vector2(0f, -465f), new Vector2(460f, 120f), () => _garage.SetActive(false), ButtonStyle.Secondary);
             _garage = root.gameObject;
             _garage.SetActive(false);
+        }
+
+        private void BuildMaps(Transform canvas)
+        {
+            var root = UiFactory.CreateRect("Maps", canvas);
+            UiFactory.Stretch(root);
+            UiFactory.CreateOverlay(root);
+            var card = UiFactory.CreateCard(root, Vector2.zero, new Vector2(860f, 760f));
+            var heading = UiFactory.CreateText(card, "Tonight's route", 70, new Vector2(0f, 270f), new Vector2(800f, 110f), font: UiFont.Display);
+            heading.color = UiFactory.Ink;
+            UiFactory.CreateButton(card, "Market Street", new Vector2(0f, 110f), new Vector2(620f, 150f), () => Ride(MapKind.MarketStreet));
+            _harborButton = UiFactory.CreateButton(card, "Harbor Ring", new Vector2(0f, -80f), new Vector2(620f, 150f), () => Ride(MapKind.HarborRing));
+            _harborButton.gameObject.AddComponent<CanvasGroup>();
+            _harborNote = UiFactory.CreateText(card, "", 32, new Vector2(0f, -185f), new Vector2(760f, 60f));
+            _harborNote.color = UiFactory.Muted;
+            UiFactory.CreateButton(card, "Back", new Vector2(0f, -290f), new Vector2(400f, 110f), () => _maps.SetActive(false), ButtonStyle.Secondary);
+            _maps = root.gameObject;
+            _maps.SetActive(false);
+        }
+
+        private void OpenMaps()
+        {
+            bool open = Services.Get<SaveService>().Data.GetGame<GarageData>().CanRide(MapKind.HarborRing);
+            _harborButton.interactable = open;
+            _harborButton.GetComponent<CanvasGroup>().alpha = open ? 1f : 0.45f;
+            _harborNote.text = open ? "" : UiFactory.Localize("Beat Market Street to open");
+            _maps.SetActive(true);
+        }
+
+        private void Ride(MapKind map)
+        {
+            var save = Services.Get<SaveService>();
+            var data = save.Data.GetGame<GarageData>();
+            if (!data.CanRide(map))
+            {
+                return;
+            }
+
+            data.map = map;
+            save.Data.SetGame(data);
+            save.MarkDirty();
+            save.Save();
+            Services.Get<GameFlow>().GoToAsync(AppState.Game).Forget();
         }
 
         private void BuildCodex(Transform canvas)

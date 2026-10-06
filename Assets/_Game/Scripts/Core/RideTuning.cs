@@ -2,6 +2,12 @@ using System;
 
 namespace NightCourier.Core
 {
+    public enum MapKind
+    {
+        MarketStreet,
+        HarborRing,
+    }
+
     [Serializable]
     public struct EnemyStats
     {
@@ -89,6 +95,13 @@ namespace NightCourier.Core
         public int bossSummonCount = 8;
         public float bossFanEvery = 1.5f;
         public int bossFanOrbs = 5;
+
+        /// <summary>Which map the shift is on: it picks the boss (Dispatcher on map 1, Freight Hauler on map 2).</summary>
+        public MapKind map;
+        public EnemyStats freight = new EnemyStats { speed = 1.2f, hp = 1800f, contactDamage = 35f, radius = 1.4f };
+        public float freightChargeEvery = 4.5f;
+        public float freightChargeSpeed = 9f;
+        public float freightChargeSeconds = 1.2f;
         public int eliteGroupCount = 3;
 
         // Elites and drafting: an elite every minute from 1:00; riding within draftRange behind one (and within
@@ -191,6 +204,7 @@ namespace NightCourier.Core
             EnemyKind.Splitter => splitter,
             EnemyKind.Zapper => zapper,
             EnemyKind.Boss => boss,
+            EnemyKind.Freight => freight,
             _ => scout,
         };
 

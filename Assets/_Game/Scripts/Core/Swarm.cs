@@ -19,6 +19,9 @@ namespace NightCourier.Core
 
         /// <summary>The Dispatcher, map 1's boss at 10:00: summons drones and fires fans of orbs.</summary>
         Boss,
+
+        /// <summary>The Freight Hauler, map 2's boss: charges in straight lines; draft behind it to dodge.</summary>
+        Freight,
     }
 
     /// <summary>
@@ -62,6 +65,8 @@ namespace NightCourier.Core
         public float[] Timer { get; }
         public int Count { get; private set; }
 
+        public static bool IsBoss(EnemyKind kind) => kind == EnemyKind.Boss || kind == EnemyKind.Freight;
+
         /// <summary>A boss is among the live drones.</summary>
         public bool HasBoss => _bosses > 0;
         public int Capacity => X.Length;
@@ -81,7 +86,7 @@ namespace NightCourier.Core
             X[i] = x;
             Y[i] = y;
             Kind[i] = kind;
-            if (kind == EnemyKind.Boss)
+            if (IsBoss(kind))
             {
                 _bosses++;
             }
@@ -93,7 +98,7 @@ namespace NightCourier.Core
 
         public void RemoveAt(int i)
         {
-            if (Kind[i] == EnemyKind.Boss)
+            if (IsBoss(Kind[i]))
             {
                 _bosses--;
             }
@@ -154,7 +159,16 @@ namespace NightCourier.Core
             for (int i = 0; i < Count; i++)
             {
                 float speed = _t.Stats(Kind[i]).speed;
-                if (Kind[i] == EnemyKind.Boss)
+                if (Kind[i] == EnemyKind.Freight && Timer[i] > 0f)
+                {
+                    // Charging: a straight line at charge speed, whatever the bike does (Ride starts the charge).
+                    Timer[i] -= dt;
+                    X[i] += MathF.Cos(Heading[i]) * _t.freightChargeSpeed * dt;
+                    Y[i] += MathF.Sin(Heading[i]) * _t.freightChargeSpeed * dt;
+                    continue;
+                }
+
+                if (IsBoss(Kind[i]))
                 {
                     // The boss bears down on the bike and shoulders through the swarm.
                     float bx = target.X - X[i], by = target.Y - Y[i];

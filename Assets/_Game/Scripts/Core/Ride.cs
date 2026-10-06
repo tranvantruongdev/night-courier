@@ -278,14 +278,16 @@ namespace NightCourier.Core
         {
             bool drafting = false;
             Vector2 p = Bike.Position;
-            float near = _t.bikeRadius + _t.elite.radius;
             for (int i = 0; i < Swarm.Count && !drafting; i++)
             {
-                if (Swarm.Kind[i] != EnemyKind.Elite)
+                // Elites, and the Freight Hauler while it charges: its slipstream is the safe spot.
+                bool slipstream = Swarm.Kind[i] == EnemyKind.Elite || (Swarm.Kind[i] == EnemyKind.Freight && Swarm.Timer[i] > 0f);
+                if (!slipstream)
                 {
                     continue;
                 }
 
+                float near = _t.bikeRadius + _t.Stats(Swarm.Kind[i]).radius;
                 float hx = MathF.Cos(Swarm.Heading[i]), hy = MathF.Sin(Swarm.Heading[i]);
                 float rx = p.X - Swarm.X[i], ry = p.Y - Swarm.Y[i];
                 float behind = -(rx * hx + ry * hy);
@@ -322,7 +324,7 @@ namespace NightCourier.Core
                 var kind = Swarm.Kind[i];
                 events.Add(new RideEvent { type = RideEventType.Killed, x = x, y = y, value = (float)kind });
                 Swarm.RemoveAt(i); // the last drone moves into i; it was already checked
-                if (kind == EnemyKind.Boss)
+                if (Swarm.IsBoss(kind))
                 {
                     Won = true;
                     Over = true;
@@ -477,7 +479,7 @@ namespace NightCourier.Core
             {
                 _bossSpawned = true;
                 Vector2 at = p + Bike.Forward * (_t.spawnDistance * 0.8f);
-                Swarm.Spawn(EnemyKind.Boss, at.X, at.Y);
+                Swarm.Spawn(_t.map == MapKind.HarborRing ? EnemyKind.Freight : EnemyKind.Boss, at.X, at.Y);
                 _bossSummon = 1f; // first wave a second after it shows
                 _bossFan = _t.bossFanEvery;
                 events.Add(new RideEvent { type = RideEventType.ShiftEvent, x = at.X, y = at.Y, value = (float)ShiftEvent.Boss });
@@ -489,12 +491,25 @@ namespace NightCourier.Core
             }
 
             int b = 0;
-            while (Swarm.Kind[b] != EnemyKind.Boss)
+            while (!Swarm.IsBoss(Swarm.Kind[b]))
             {
                 b++;
             }
 
             float bx = Swarm.X[b], by = Swarm.Y[b];
+            if (Swarm.Kind[b] == EnemyKind.Freight)
+            {
+                // The Freight Hauler lines up on the bike and charges; between charges it lumbers after it.
+                if (Swarm.Timer[b] <= 0f && (_bossFan -= dt) <= 0f) // a charge holds its line to the end
+                {
+                    _bossFan = _t.freightChargeEvery;
+                    Swarm.Heading[b] = MathF.Atan2(p.Y - by, p.X - bx);
+                    Swarm.Timer[b] = _t.freightChargeSeconds;
+                }
+
+                return;
+            }
+
             if ((_bossSummon -= dt) <= 0f)
             {
                 _bossSummon = _t.bossSummonEvery;

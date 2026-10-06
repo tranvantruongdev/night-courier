@@ -49,6 +49,7 @@ namespace NightCourier
         private Camera _camera;
         private Vector3 _cameraVelocity;
         private Transform _ground;
+        private SpriteRenderer _groundRenderer;
         private BikeView _bikeView;
         private SwarmView _swarmView;
         private WeaponsView _weaponsView;
@@ -101,7 +102,8 @@ namespace NightCourier
             var world = new GameObject("World").transform;
             var ground = new GameObject("Ground").AddComponent<SpriteRenderer>();
             ground.transform.SetParent(world, false);
-            ground.sprite = NeonArt.MarketStreet; // map 1
+            ground.sprite = NeonArt.MarketStreet; // set per map in NewRide
+            _groundRenderer = ground;
             ground.drawMode = SpriteDrawMode.Tiled;
             ground.size = new Vector2(GroundTile * 3f, GroundTile * 3f);
             ground.sortingOrder = -10;
@@ -141,6 +143,8 @@ namespace NightCourier
             var garageData = Services.Get<SaveService>().Data.GetGame<GarageData>();
             Garage.Apply(garageData, tuning);
             _firstRun = !garageData.rodeOnce;
+            tuning.map = garageData.CanRide(garageData.map) ? garageData.map : MapKind.MarketStreet;
+            _groundRenderer.sprite = tuning.map == MapKind.HarborRing ? NeonArt.HarborRing : NeonArt.MarketStreet;
             if (StressDrones > 0)
             {
                 tuning.waves = WaveDirector.Flat(StressDrones);
@@ -272,7 +276,9 @@ namespace NightCourier
                     Haptics.Medium();
                     break;
                 case RideEventType.ShiftEvent:
-                    Radio(RadioLines[(int)e.value]);
+                    Radio((ShiftEvent)e.value == ShiftEvent.Boss && _ride.Tuning.map == MapKind.HarborRing
+                        ? "Dispatch: The Freight Hauler! When it charges, get behind it and ride its slipstream."
+                        : RadioLines[(int)e.value]);
                     Haptics.Medium();
                     break;
                 case RideEventType.Drafted:
@@ -343,6 +349,10 @@ namespace NightCourier
             int earned = Garage.CoinsFor(_ride);
             garage.coins += earned;
             garage.rodeOnce = true;
+            if (won)
+            {
+                garage.wonMaps |= 1 << (int)_ride.Tuning.map;
+            }
             Garage.RecordCodex(garage, _ride.Loadout);
             save.Data.SetGame(garage);
             save.MarkDirty();

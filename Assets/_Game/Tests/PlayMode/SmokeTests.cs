@@ -41,6 +41,11 @@ namespace NightCourier.PlayModeTests
             Capture("1b-garage");
             ClickButton("Button Close");
             yield return new WaitForSecondsRealtime(0.2f);
+            ClickButton("Button Ride");
+            yield return new WaitForSecondsRealtime(0.3f);
+            Capture("1d-maps");
+            ClickButton("Button Back");
+            yield return new WaitForSecondsRealtime(0.2f);
             ClickButton("Button Codex");
             yield return new WaitForSecondsRealtime(0.3f);
             Capture("1c-codex");
@@ -121,6 +126,12 @@ namespace NightCourier.PlayModeTests
             Assert.GreaterOrEqual(save.bestScore, (int)ride.Time, "the best time covers this ride");
 
             // The profiling ride: 300 drones, no damage, the autopilot steering. Logs the editor's frame time.
+            // The stress ride and the boss on map 2 (opened in the save for the test): Harbor Ring and the Freight Hauler.
+            var saveService = Services.Get<SaveService>();
+            var garage = saveService.Data.GetGame<NightCourier.Core.GarageData>();
+            garage.map = NightCourier.Core.MapKind.HarborRing;
+            garage.wonMaps |= 1;
+            saveService.Data.SetGame(garage);
             RideController.StressDrones = 300;
             RideController.Autopilot = true;
             Call(controller, "NewRide");
@@ -142,13 +153,13 @@ namespace NightCourier.PlayModeTests
             // The Dispatcher: in the shot with its orb fans, then down: the shift is won.
             var boss = controller.Ride;
             var front = boss.Bike.Position + boss.Bike.Forward * 6f;
-            int b = boss.Swarm.Spawn(NightCourier.Core.EnemyKind.Boss, front.X, front.Y);
+            int b = boss.Swarm.Spawn(NightCourier.Core.EnemyKind.Freight, front.X, front.Y);
             boss.Swarm.Hp[b] = 1e6f;
             yield return new WaitForSeconds(1.8f);
             Capture("6b-boss");
             for (int i = 0; i < boss.Swarm.Count; i++)
             {
-                if (boss.Swarm.Kind[i] == NightCourier.Core.EnemyKind.Boss)
+                if (NightCourier.Core.Swarm.IsBoss(boss.Swarm.Kind[i]))
                 {
                     boss.Swarm.Hp[i] = 0f;
                 }

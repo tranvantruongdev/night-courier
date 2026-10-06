@@ -247,6 +247,39 @@ namespace NightCourier.Core.Tests
         }
 
         [Test]
+        public void HarborRingsBossChargesInStraightLines()
+        {
+            var t = Quiet();
+            t.headlightDps = 0f;
+            t.map = MapKind.HarborRing;
+            t.shiftSeconds = 0.05f;
+            var ride = new Ride(t, 1);
+            Run(ride, 0.1f, r => Vector2.Zero);
+            Assert.That(ride.Swarm.Kind[0], Is.EqualTo(EnemyKind.Freight));
+
+            // The first charge comes 1.5 s after it arrives: a burst far faster than its 1.2 u/s lumber.
+            Run(ride, 1.45f, r => Vector2.Zero);
+            var before = new Vector2(ride.Swarm.X[0], ride.Swarm.Y[0]);
+            Run(ride, 0.3f, r => Vector2.Zero);
+            float moved = Vector2.Distance(before, new Vector2(ride.Swarm.X[0], ride.Swarm.Y[0]));
+            Assert.That(moved, Is.GreaterThan(t.freightChargeSpeed * 0.3f * 0.6f), "charging");
+        }
+
+        [Test]
+        public void DraftingBehindTheChargingFreightHaulerFiresTheBurst()
+        {
+            var t = Quiet();
+            t.headlightDps = 0f;
+            t.freightChargeSpeed = t.cruiseSpeed; // a charge that keeps pace, to sit in its slipstream
+            var ride = new Ride(t, 1);
+            int b = ride.Swarm.Spawn(EnemyKind.Freight, 0f, 2.5f, 1f, MathF.PI / 2f);
+            ride.Swarm.Timer[b] = 10f; // mid-charge, heading up like the bike
+
+            var events = Run(ride, t.draftSeconds + 0.1f, r => Vector2.Zero);
+            Assert.That(events.Any(e => e.type == RideEventType.Drafted), Is.True);
+        }
+
+        [Test]
         public void BeatingTheBossWinsTheShift()
         {
             var t = Quiet();

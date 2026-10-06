@@ -19,6 +19,7 @@ namespace NightCourier.Art
         public static readonly Color Splitter = Hex(0xFF9A3C);
         public static readonly Color Zapper = Hex(0x9BFF4E);
         public static readonly Color Boss = Hex(0xFF5A1F);
+        public static readonly Color Freight = Hex(0xFFB000);
 
         /// <summary>Enemy shots only: nothing else in the game is magenta.</summary>
         public static readonly Color Orb = Hex(0xFF3EF0);
@@ -62,6 +63,54 @@ namespace NightCourier.Art
         public static Sprite MarketStreet => _market != null ? _market : (_market = DrawMarketStreet());
 
         private static Sprite _market;
+        private static Sprite _harbor;
+
+        /// <summary>
+        /// Map 2, Harbor Ring: a 16 × 16 unit tile of quay lanes between stacks of shipping containers, crane rails
+        /// along the lanes and warning stripes at the crossings. Tiles seamlessly.
+        /// </summary>
+        public static Sprite HarborRing => _harbor != null ? _harbor : (_harbor = DrawHarborRing());
+
+        private static Sprite DrawHarborRing()
+        {
+            const int size = 256; // 16 pixels per unit; containers 4 × 2 units in blocks that repeat every 128 px
+            var pixels = new Color32[size * size];
+            Color[] boxes = { Palette.Hex(0x7A2E2E), Palette.Hex(0x2E5C7A), Palette.Hex(0x7A6A2E), Palette.Hex(0x3C7A2E) };
+            Color quay = Palette.Hex(0x16243A), rail = Palette.Hex(0x3A4F6E), stripe = Palette.Hex(0xFFB000);
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    int bx = x % 128, by = y % 128;
+                    bool laneX = bx < 24, laneY = by < 24; // 1.5-unit quay lanes
+                    Color c = Palette.Night;
+                    if (laneX || laneY)
+                    {
+                        c = quay;
+                        if ((laneX && (bx == 6 || bx == 17)) || (laneY && (by == 6 || by == 17)))
+                        {
+                            c = rail; // crane rails
+                        }
+
+                        if (laneX && laneY && ((bx + by) / 6) % 2 == 0)
+                        {
+                            c = Color.Lerp(quay, stripe, 0.6f); // hazard stripes where lanes cross
+                        }
+                    }
+                    else
+                    {
+                        // Container stacks: 52 × 26 px boxes with a dark seam, colour by grid cell.
+                        int cx = (bx - 24) / 52, cy = (by - 24) / 26;
+                        bool seam = (bx - 24) % 52 < 2 || (by - 24) % 26 < 2;
+                        c = seam ? Palette.Night : Color.Lerp(Palette.Night, boxes[(cx * 3 + cy * 5 + (x / 128) + (y / 128) * 2) % boxes.Length], 0.75f);
+                    }
+
+                    pixels[y * size + x] = c;
+                }
+            }
+
+            return Make(pixels, size, size, 16f, TextureWrapMode.Repeat);
+        }
 
         private static Sprite DrawMarketStreet()
         {
