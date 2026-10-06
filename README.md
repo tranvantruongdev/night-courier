@@ -4,14 +4,13 @@
 Neon Ward glitched, and now the Swarm chases anything that stops moving. Kai, a night-shift courier on a
 fixed-gear bike, has to ride until dawn.
 
-> **Status (Oct 2026): week 2 of 5, in progress.** The bike, the swarm, all six weapons (Headlight, Spoke Cards,
-> Bell, Chain Whip, Tyre Spikes, Pannier Drone), six passives, XP parcels and level-up cards work in Unity 6.3
-> LTS, with a wave curve setting the swarm size, Market Street as map 1, four weapon evolutions, and elites you
-> can draft behind, Splitter and Zapper drones, the 3:00 / 6:00 / 8:30 shift events and a damage-per-weapon
-> chart on the results, and the Dispatcher boss at 10:00, whose defeat wins the shift. Week 4 (garage, map 2)
-> comes next. 103 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
-> levels up through the card popup, crashes, saves the result and runs a 300-drone stress ride. The
-> screenshots below come from that test.
+> **Status (Oct 2026): week 4 of 5, in progress.** A full 10-minute shift plays in Unity 6.3 LTS on map 1
+> (Market Street): six weapons and six passives with four evolutions, level-up cards, a wave curve, elites to
+> draft behind, Splitter and Zapper drones, scripted events at 3:00 / 6:00 / 8:30, and the Dispatcher boss at
+> 10:00, whose defeat wins the shift. Between shifts, coins buy permanent upgrades in the Garage. Codex, extra
+> bikes and map 2 come next. 103 EditMode tests pass, and a PlayMode smoke test plays the real game on
+> autopilot: garage, ride, level-up, crash, results, a 300-drone stress ride and the boss. The screenshots below
+> come from that test.
 
 <p>
   <img src="docs/screenshots/riding.png" width="270" alt="The cyan bike rides through Market Street at full speed, headlight on, past stalls with striped awnings and lantern strings; red diamond drones close in">
