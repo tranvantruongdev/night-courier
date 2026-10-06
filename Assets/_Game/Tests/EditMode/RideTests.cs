@@ -17,7 +17,7 @@ namespace NightCourier.Core.Tests
         {
             var t = RideTuning.Default();
             t.waves = new WaveKey[0];
-            t.firstEliteAt = float.MaxValue;
+            t.firstEliteAt = t.ringAt = t.hordeAt = t.eliteGroupAt = float.MaxValue;
             t.headlightDps = 0f;
             return t;
         }
@@ -188,6 +188,44 @@ namespace NightCourier.Core.Tests
             early.splitterFrom = early.zapperFrom = 0f;
             Assert.That(Count(early, EnemyKind.Splitter), Is.InRange(25, 65)); // 15% of 300
             Assert.That(Count(early, EnemyKind.Zapper), Is.InRange(10, 40));   // 8% of 300
+        }
+
+        [Test]
+        public void ShiftEventsRunOnceEachInOrder()
+        {
+            var t = Quiet();
+            t.ringAt = 0.05f;
+            t.hordeAt = 0.1f;
+            t.eliteGroupAt = 0.15f;
+            var ride = new Ride(t, 2);
+
+            var events = Run(ride, 0.06f, r => Vector2.Zero);
+            Assert.That(events.Where(e => e.type == RideEventType.ShiftEvent).Select(e => (ShiftEvent)e.value), Is.EqualTo(new[] { ShiftEvent.Ring }));
+            Assert.That(ride.Swarm.Count, Is.EqualTo(t.ringCount));
+            for (int i = 0; i < ride.Swarm.Count; i++)
+            {
+                float d = Vector2.Distance(new Vector2(ride.Swarm.X[i], ride.Swarm.Y[i]), ride.Bike.Position);
+                Assert.That(d, Is.EqualTo(t.ringRadius).Within(0.3f), "a ring around the bike");
+            }
+
+            events = Run(ride, 0.05f, r => Vector2.Zero);
+            Assert.That(ride.Swarm.Count, Is.EqualTo(t.ringCount + t.hordeCount));
+            // The horde sits off to one side: every member is within 3 u of a point 13 u away (box ±3 → ≤ 4.3).
+            float cx = 0f, cy = 0f;
+            for (int i = t.ringCount; i < ride.Swarm.Count; i++)
+            {
+                cx += ride.Swarm.X[i];
+                cy += ride.Swarm.Y[i];
+            }
+
+            var centre = new Vector2(cx, cy) / t.hordeCount;
+            Assert.That(Vector2.Distance(centre, ride.Bike.Position), Is.EqualTo(t.spawnDistance).Within(1.5f));
+
+            events = Run(ride, 0.05f, r => Vector2.Zero);
+            Assert.That(ride.Swarm.Kind.Take(ride.Swarm.Count).Count(k => k == EnemyKind.Elite), Is.EqualTo(t.eliteGroupCount));
+
+            events = Run(ride, 1f, r => Vector2.Zero);
+            Assert.That(events.Any(e => e.type == RideEventType.ShiftEvent), Is.False, "each event happens once");
         }
 
         [Test]

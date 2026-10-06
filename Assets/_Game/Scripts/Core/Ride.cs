@@ -16,6 +16,16 @@ namespace NightCourier.Core
         BellRang,
         WhipCracked,
         Drafted,
+
+        /// <summary>A scripted shift event started; value is a <see cref="ShiftEvent"/>.</summary>
+        ShiftEvent,
+    }
+
+    public enum ShiftEvent
+    {
+        Ring,
+        Horde,
+        EliteGroup,
     }
 
     /// <summary>Something the view should react to (sound, haptics, flash, text).</summary>
@@ -48,6 +58,7 @@ namespace NightCourier.Core
         private readonly float[] _orbVY = new float[MaxOrbs];
         private int _nextOrb;
         private float _nextElite;
+        private int _shiftEvent;
         private float _draftTime;
         private float _boostLeft;
 
@@ -118,6 +129,7 @@ namespace NightCourier.Core
             RecycleStragglers();
             Swarm.Step(dt, Bike.Position);
             SpawnElites();
+            RunShiftEvents(events);
             Draft(dt, events);
             FireZappers(dt);
             MoveOrbs(dt, events);
@@ -171,6 +183,61 @@ namespace NightCourier.Core
             _nextElite += _t.eliteEvery;
             Vector2 at = Bike.Position + Bike.Forward * (_t.spawnDistance * 0.7f);
             Swarm.Spawn(EnemyKind.Elite, at.X, at.Y, WaveDirector.HpScale(Time, _t.hpPerMinute), Bike.Heading);
+        }
+
+        /// <summary>The three scripted moments of the shift, each once, in order.</summary>
+        private void RunShiftEvents(List<RideEvent> events)
+        {
+            if (_shiftEvent > (int)ShiftEvent.EliteGroup)
+            {
+                return;
+            }
+
+            var next = (ShiftEvent)_shiftEvent;
+            float at = next == ShiftEvent.Ring ? _t.ringAt : next == ShiftEvent.Horde ? _t.hordeAt : _t.eliteGroupAt;
+            if (Time < at)
+            {
+                return;
+            }
+
+            _shiftEvent++;
+            Vector2 p = Bike.Position;
+            float hp = WaveDirector.HpScale(Time, _t.hpPerMinute);
+            switch (next)
+            {
+                case ShiftEvent.Ring:
+                    for (int k = 0; k < _t.ringCount; k++)
+                    {
+                        Vector2 at2 = p + Direction(k * 2f * MathF.PI / _t.ringCount) * _t.ringRadius;
+                        Swarm.Spawn(EnemyKind.Scout, at2.X, at2.Y, hp);
+                    }
+
+                    break;
+                case ShiftEvent.Horde:
+                    // A thick crowd off to one side, all charging in at once.
+                    float side = _rng.Range(0f, 2f * MathF.PI);
+                    Vector2 centre = p + Direction(side) * _t.spawnDistance;
+                    for (int k = 0; k < _t.hordeCount; k++)
+                    {
+                        var kind = k % 5 == 0 ? EnemyKind.Hauler : EnemyKind.Scout;
+                        Swarm.Spawn(kind, centre.X + _rng.Range(-3f, 3f), centre.Y + _rng.Range(-3f, 3f), hp);
+                    }
+
+                    break;
+                case ShiftEvent.EliteGroup:
+                    // Side by side ahead on the bike's line: three slipstreams to pick from.
+                    Vector2 ahead = p + Bike.Forward * (_t.spawnDistance * 0.7f);
+                    var across = new Vector2(-Bike.Forward.Y, Bike.Forward.X);
+                    for (int k = 0; k < _t.eliteGroupCount; k++)
+                    {
+                        Vector2 at2 = ahead + across * ((k - (_t.eliteGroupCount - 1) * 0.5f) * 2.5f);
+                        Swarm.Spawn(EnemyKind.Elite, at2.X, at2.Y, hp, Bike.Heading);
+                    }
+
+                    break;
+            }
+
+            events.Add(new RideEvent { type = RideEventType.ShiftEvent, x = p.X, y = p.Y, value = (float)next });
         }
 
         /// <summary>Riding in an elite's slipstream fills the draft meter; full, it fires the speed burst.</summary>

@@ -61,6 +61,7 @@ namespace NightCourier
         private AudioClip _collectSound;
         private AudioClip _levelSound;
         private AudioClip _bellSound;
+        private AudioClip _radioSound;
         private float _accumulator;
         private bool _choosing;
 
@@ -87,6 +88,7 @@ namespace NightCourier
             _collectSound = ToneFactory.Blip("parcel", 2100f, 0.03f, 0.2f);
             _levelSound = ToneFactory.Blip("level", 660f, 0.25f, 0.5f);
             _bellSound = ToneFactory.Blip("bell", 1320f, 0.35f, 0.45f);
+            _radioSound = ToneFactory.Blip("radio", 2400f, 0.06f, 0.3f);
 
             _camera = Camera.main;
             _camera.orthographic = true;
@@ -140,6 +142,7 @@ namespace NightCourier
             _hud.HideResults();
             _hud.ShowPause(false);
             _phase.TryGo(Phase.Riding);
+            Radio("Dispatch: Kai, the Swarm is out tonight. Keep those wheels turning.");
             _camera.transform.position = CameraTarget();
             _cameraVelocity = Vector3.zero;
         }
@@ -194,6 +197,7 @@ namespace NightCourier
             _weaponsView.Sync(_ride, Time.deltaTime);
             _swarmView.SyncOrbs(_ride);
             _hud.SetTime(_ride.Time);
+            _hud.Tick(Time.unscaledDeltaTime);
             _hud.SetLevel(_ride.Level, _ride.Xp / (float)_ride.XpNeeded);
             _hud.SetHp(_ride.Hp / _ride.Tuning.maxHp);
             _hud.SetSpeed(bike.Speed / bike.MaxSpeed, bike.CanDodge);
@@ -237,6 +241,10 @@ namespace NightCourier
                     _audio.PlaySfx(_levelSound);
                     Haptics.Medium();
                     break;
+                case RideEventType.ShiftEvent:
+                    Radio(RadioLines[(int)e.value]);
+                    Haptics.Medium();
+                    break;
                 case RideEventType.Drafted:
                     _audio.PlaySfx(_levelSound, 0.7f, 1.5f);
                     Haptics.Medium();
@@ -251,6 +259,20 @@ namespace NightCourier
                     _audio.PlaySfx(_bellSound, 0.8f);
                     break;
             }
+        }
+
+        /// <summary>Dispatch's line for each <see cref="ShiftEvent"/>, in enum order.</summary>
+        private static readonly string[] RadioLines =
+        {
+            "Dispatch: They're circling you. Break out!",
+            "Dispatch: Big wave coming from one side. Cut across it, not into it.",
+            "Dispatch: Three heavy drones on your line. Draft them!",
+        };
+
+        private void Radio(string line)
+        {
+            _hud.ShowRadio(line);
+            _audio.PlaySfx(_radioSound, 0.6f);
         }
 
         private void OnCardPicked(int index)

@@ -73,6 +73,15 @@ namespace NightCourier.Core
         public float orbLife = 3f;
         public float orbRadius = 0.2f;
 
+        // Shift events: a ring closes in at 3:00, a horde charges from one side at 6:00, an elite group at 8:30.
+        public float ringAt = 180f;
+        public int ringCount = 40;
+        public float ringRadius = 9f;
+        public float hordeAt = 360f;
+        public int hordeCount = 60;
+        public float eliteGroupAt = 510f;
+        public int eliteGroupCount = 3;
+
         // Elites and drafting: an elite every minute from 1:00; riding within draftRange behind one (and within
         // draftLateral of its line) for draftSeconds gives +draftBoost speed for draftBoostSeconds.
         public float firstEliteAt = 60f;

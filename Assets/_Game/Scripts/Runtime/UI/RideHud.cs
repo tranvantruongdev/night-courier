@@ -35,6 +35,9 @@ namespace NightCourier.UI
         private readonly TextMeshProUGUI[] _cardTitles = new TextMeshProUGUI[LevelUpRoller.Cards];
         private readonly TextMeshProUGUI[] _cardLines = new TextMeshProUGUI[LevelUpRoller.Cards];
         private Action<int> _pick;
+        private TextMeshProUGUI _radio;
+        private float _radioLeft;
+        private const float RadioSeconds = 4f;
 
         public event Action PausePressed;
         public event Action ResumePressed;
@@ -63,6 +66,11 @@ namespace NightCourier.UI
             hud._xpFill = Bar(safe, new Vector2(0.5f, 1f), new Vector2(-BarWidth * 0.5f, -205f), BarWidth, 14f, Palette.Parcel).rectTransform;
             hud._level = UiFactory.Place(UiFactory.CreateText(safe, "Lv 1", 40, Vector2.zero, new Vector2(200, 60), TextAlignmentOptions.Left),
                 new Vector2(0.5f, 1f), new Vector2(BarWidth * 0.5f + 120f, -185f));
+
+            hud._radio = UiFactory.Place(UiFactory.CreateText(safe, "", 40, Vector2.zero, new Vector2(960, 140)),
+                new Vector2(0.5f, 1f), new Vector2(0f, -300f));
+            hud._radio.color = Palette.Bike;
+            hud._radio.alpha = 0f;
 
             var gaugeLabel = UiFactory.Place(UiFactory.CreateText(safe, "SPEED", 34, Vector2.zero, new Vector2(300, 60), TextAlignmentOptions.Left),
                 new Vector2(0f, 0f), new Vector2(210f, 200f));
@@ -101,6 +109,19 @@ namespace NightCourier.UI
             }
 
             return hud;
+        }
+
+        /// <summary>A line from dispatch under the bars, fading out after a few seconds (call <see cref="Tick"/>).</summary>
+        public void ShowRadio(string line)
+        {
+            _radio.text = UiFactory.Localize(line);
+            _radioLeft = RadioSeconds;
+        }
+
+        public void Tick(float dt)
+        {
+            _radioLeft = Mathf.Max(0f, _radioLeft - dt);
+            _radio.alpha = Mathf.Clamp01(_radioLeft / 0.6f); // full until the last 0.6 s
         }
 
         public void SetLevel(int level, float xpFraction)
