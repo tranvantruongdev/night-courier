@@ -307,7 +307,19 @@ namespace NightCourier
             save.Save();
 
             string best = newBest ? Loc("New best!") : $"{Loc("Best")} {Clock(save.Data.bestScore)}";
-            _hud.ShowResults("Shift over", $"{Loc("Survived")} {Clock(seconds)}\n{best}");
+            var chart = new List<(string name, float damage)>();
+            foreach (ItemKind item in Enum.GetValues(typeof(ItemKind)))
+            {
+                float dealt = _ride.Arsenal.DamageBy[(int)item];
+                if (dealt > 0f)
+                {
+                    chart.Add((_ride.Loadout.Evolved(item) ? ItemText.EvolvedName(item) : ItemText.Name(item), dealt));
+                }
+            }
+
+            chart.Sort((a, b) => b.damage.CompareTo(a.damage));
+            _hud.ShowResults("Shift over",
+                $"{Loc("Survived")} {Clock(seconds)}  ·  {_ride.Kills} {Loc("kills")}  ·  {Loc("Lv")} {_ride.Level}\n{best}", chart);
         }
 
         private static string Loc(string text) => Template.UI.UiFactory.Localize(text);

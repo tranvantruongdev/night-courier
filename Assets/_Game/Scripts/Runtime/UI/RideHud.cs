@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NightCourier.Art;
 using NightCourier.Core;
 using Template.Feel;
@@ -35,6 +36,11 @@ namespace NightCourier.UI
         private readonly TextMeshProUGUI[] _cardTitles = new TextMeshProUGUI[LevelUpRoller.Cards];
         private readonly TextMeshProUGUI[] _cardLines = new TextMeshProUGUI[LevelUpRoller.Cards];
         private Action<int> _pick;
+        private const int ChartRows = 6;
+        private const float ChartWidth = 400f;
+        private readonly TextMeshProUGUI[] _chartNames = new TextMeshProUGUI[ChartRows];
+        private readonly RectTransform[] _chartBars = new RectTransform[ChartRows];
+        private readonly TextMeshProUGUI[] _chartValues = new TextMeshProUGUI[ChartRows];
         private TextMeshProUGUI _radio;
         private float _radioLeft;
         private const float RadioSeconds = 4f;
@@ -91,8 +97,20 @@ namespace NightCourier.UI
             Button(hud._pause.transform, "Home", -200f, () => hud.HomePressed?.Invoke(), ButtonStyle.Secondary);
 
             hud._results = Panel(canvas.transform, "Shift over", out hud._resultsTitle, out hud._resultsBody);
-            Button(hud._results.transform, "Ride again", -10f, () => hud.RetryPressed?.Invoke());
-            Button(hud._results.transform, "Home", -200f, () => hud.HomePressed?.Invoke(), ButtonStyle.Secondary);
+            Button(hud._results.transform, "Ride again", -50f, () => hud.RetryPressed?.Invoke());
+            Button(hud._results.transform, "Home", -220f, () => hud.HomePressed?.Invoke(), ButtonStyle.Secondary);
+            var resultsCard = hud._results.transform.Find("Card");
+            hud._resultsBody.rectTransform.anchoredPosition = new Vector2(0f, 200f);
+            for (int i = 0; i < ChartRows; i++)
+            {
+                // Damage per weapon: name, bar scaled to the top weapon, number.
+                float y = 105f - i * 36f;
+                hud._chartNames[i] = UiFactory.CreateText(resultsCard, "", 28, new Vector2(-250f, y), new Vector2(220f, 34f), TextAlignmentOptions.Right);
+                hud._chartNames[i].color = UiFactory.Ink;
+                hud._chartBars[i] = Bar(resultsCard, new Vector2(0.5f, 0.5f), new Vector2(-125f, y), ChartWidth, 20f, Palette.Bonus).rectTransform;
+                hud._chartValues[i] = UiFactory.CreateText(resultsCard, "", 26, new Vector2(345f, y), new Vector2(120f, 34f), TextAlignmentOptions.Left); // starts past the bar end (275)
+                hud._chartValues[i].color = UiFactory.Muted;
+            }
 
             hud._levelUp = Panel(canvas.transform, "Level up!", out _, out _);
             var levelCard = hud._levelUp.transform.Find("Card");
@@ -199,10 +217,24 @@ namespace NightCourier.UI
             }
         }
 
-        public void ShowResults(string title, string body)
+        public void ShowResults(string title, string body, IReadOnlyList<(string name, float damage)> chart)
         {
             _resultsTitle.text = UiFactory.Localize(title);
             _resultsBody.text = body;
+            float top = chart.Count > 0 ? chart[0].damage : 1f;
+            for (int i = 0; i < ChartRows; i++)
+            {
+                bool shown = i < chart.Count;
+                _chartNames[i].gameObject.SetActive(shown);
+                _chartBars[i].parent.gameObject.SetActive(shown); // the track; the fill is its child
+                _chartValues[i].gameObject.SetActive(shown);
+                if (shown)
+                {
+                    _chartNames[i].text = UiFactory.Localize(chart[i].name);
+                    SetWidth(_chartBars[i], ChartWidth, chart[i].damage / top);
+                    _chartValues[i].text = UiFactory.Tabular(Mathf.RoundToInt(chart[i].damage).ToString());
+                }
+            }
             _results.SetActive(true);
             Joystick.Release();
             Joystick.enabled = false;
