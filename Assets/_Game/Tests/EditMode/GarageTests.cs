@@ -128,6 +128,19 @@ namespace NightCourier.Core.Tests
         }
 
         [Test]
+        public void TheFirstShiftIsLighter()
+        {
+            var first = RideTuning.Default();
+            Garage.Apply(new GarageData(), first);
+            var later = RideTuning.Default();
+            Garage.Apply(new GarageData { rodeOnce = true }, later);
+
+            Assert.That(first.waves[0].drones, Is.EqualTo((int)(later.waves[0].drones * 0.8f)));
+            Assert.That(first.waves[first.waves.Length - 1].drones, Is.LessThan(later.waves[later.waves.Length - 1].drones));
+            Assert.That(RideTuning.Default().waves[0].drones, Is.EqualTo(later.waves[0].drones), "the defaults aren't touched");
+        }
+
+        [Test]
         public void ARerollSwapsTheCardsOnce()
         {
             var t = RideTests.Quiet();

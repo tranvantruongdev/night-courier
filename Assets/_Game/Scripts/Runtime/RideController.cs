@@ -64,6 +64,9 @@ namespace NightCourier
         private AudioClip _radioSound;
         private float _accumulator;
         private bool _choosing;
+        private bool _firstRun;
+        private bool _cardHintShown;
+        private bool _draftHintShown;
 
         public Ride Ride => _ride;
         public bool IsOver => _phase != null && _phase.Current == Phase.Over;
@@ -135,7 +138,9 @@ namespace NightCourier
         private void NewRide()
         {
             var tuning = RideTuning.Default();
-            Garage.Apply(Services.Get<SaveService>().Data.GetGame<GarageData>(), tuning);
+            var garageData = Services.Get<SaveService>().Data.GetGame<GarageData>();
+            Garage.Apply(garageData, tuning);
+            _firstRun = !garageData.rodeOnce;
             if (StressDrones > 0)
             {
                 tuning.waves = WaveDirector.Flat(StressDrones);
@@ -248,7 +253,21 @@ namespace NightCourier
                 case RideEventType.Collected:
                     _audio.PlaySfx(_collectSound, 0.35f, UnityEngine.Random.Range(0.95f, 1.1f));
                     break;
+                case RideEventType.EliteArrived:
+                    if (_firstRun && !_draftHintShown)
+                    {
+                        _draftHintShown = true;
+                        Radio("Tip: ride right behind the big drone to draft for a speed burst!");
+                    }
+
+                    break;
                 case RideEventType.LevelUp:
+                    if (_firstRun && !_cardHintShown)
+                    {
+                        _cardHintShown = true;
+                        Radio("Tip: pick a card to upgrade your bike. Parts you own come up more often.");
+                    }
+
                     _audio.PlaySfx(_levelSound);
                     Haptics.Medium();
                     break;
@@ -323,6 +342,7 @@ namespace NightCourier
             var garage = save.Data.GetGame<GarageData>();
             int earned = Garage.CoinsFor(_ride);
             garage.coins += earned;
+            garage.rodeOnce = true;
             save.Data.SetGame(garage);
             save.MarkDirty();
             save.Save();

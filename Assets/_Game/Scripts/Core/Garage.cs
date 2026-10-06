@@ -30,6 +30,9 @@ namespace NightCourier.Core
         /// <summary>Bit per <see cref="BikeModel"/>; the fixie is always owned.</summary>
         public int ownedBikes = 1;
 
+        /// <summary>The first shift has been ridden: no more first-run hints or the lighter first swarm.</summary>
+        public bool rodeOnce;
+
         public int Level(GarageUpgrade upgrade) => levels != null && (int)upgrade < levels.Length ? levels[(int)upgrade] : 0;
         public bool Owns(BikeModel model) => model == BikeModel.Fixie || (ownedBikes & (1 << (int)model)) != 0;
     }
@@ -95,6 +98,18 @@ namespace NightCourier.Core
             tuning.xpGain *= 1f + 0.1f * data.Level(GarageUpgrade.XpGain);
             tuning.cruiseSpeed += 0.2f * data.Level(GarageUpgrade.StartSpeed);
             tuning.rerolls += data.Level(GarageUpgrade.Reroll);
+
+            if (!data.rodeOnce)
+            {
+                // The first shift is lighter: 20% fewer drones all the way, so a new rider feels strong by minute 3.
+                var waves = (WaveKey[])tuning.waves.Clone();
+                for (int i = 0; i < waves.Length; i++)
+                {
+                    waves[i].drones = (int)(waves[i].drones * 0.8f);
+                }
+
+                tuning.waves = waves;
+            }
 
             switch (data.bike)
             {

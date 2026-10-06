@@ -22,6 +22,9 @@ namespace NightCourier.Core
 
         /// <summary>The boss went down: the shift is won.</summary>
         Won,
+
+        /// <summary>An elite drone joined (the first one gets a drafting hint).</summary>
+        EliteArrived,
     }
 
     public enum ShiftEvent
@@ -140,7 +143,7 @@ namespace NightCourier.Core
             Bike.Step(dt, stick);
             RecycleStragglers();
             Swarm.Step(dt, Bike.Position);
-            SpawnElites();
+            SpawnElites(events);
             RunShiftEvents(events);
             RunBoss(dt, events);
             Draft(dt, events);
@@ -202,7 +205,7 @@ namespace NightCourier.Core
         }
 
         /// <summary>An elite every minute, spawned ahead on the bike's line and riding the same way, a little slower.</summary>
-        private void SpawnElites()
+        private void SpawnElites(List<RideEvent> events)
         {
             if (Time < _nextElite)
             {
@@ -212,6 +215,7 @@ namespace NightCourier.Core
             _nextElite += _t.eliteEvery;
             Vector2 at = Bike.Position + Bike.Forward * (_t.spawnDistance * 0.7f);
             Swarm.Spawn(EnemyKind.Elite, at.X, at.Y, WaveDirector.HpScale(Time, _t.hpPerMinute), Bike.Heading);
+            events.Add(new RideEvent { type = RideEventType.EliteArrived, x = at.X, y = at.Y });
         }
 
         /// <summary>The three scripted moments of the shift, each once, in order.</summary>
