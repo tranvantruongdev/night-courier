@@ -7,6 +7,9 @@ namespace NightCourier.Core
     {
         Scout,
         Hauler,
+
+        /// <summary>Cruises straight across the city; ride close behind it to draft.</summary>
+        Elite,
     }
 
     /// <summary>
@@ -30,6 +33,7 @@ namespace NightCourier.Core
             Y = new float[n];
             Hp = new float[n];
             Kind = new EnemyKind[n];
+            Heading = new float[n];
             _pushX = new float[n];
             _pushY = new float[n];
             Grid = new SpatialGrid(tuning.gridCellSize, n);
@@ -39,6 +43,9 @@ namespace NightCourier.Core
         public float[] Y { get; }
         public float[] Hp { get; }
         public EnemyKind[] Kind { get; }
+
+        /// <summary>Radians; only elites use it (they cruise straight instead of chasing).</summary>
+        public float[] Heading { get; }
         public int Count { get; private set; }
         public int Capacity => X.Length;
 
@@ -46,7 +53,7 @@ namespace NightCourier.Core
         public SpatialGrid Grid { get; }
 
         /// <summary>Returns the new slot, or -1 when the swarm is full.</summary>
-        public int Spawn(EnemyKind kind, float x, float y, float hpScale = 1f)
+        public int Spawn(EnemyKind kind, float x, float y, float hpScale = 1f, float heading = 0f)
         {
             if (Count == Capacity)
             {
@@ -58,6 +65,7 @@ namespace NightCourier.Core
             Y[i] = y;
             Kind[i] = kind;
             Hp[i] = _t.Stats(kind).hp * hpScale;
+            Heading[i] = heading;
             return i;
         }
 
@@ -68,6 +76,7 @@ namespace NightCourier.Core
             Y[i] = Y[last];
             Hp[i] = Hp[last];
             Kind[i] = Kind[last];
+            Heading[i] = Heading[last];
         }
 
         public void Step(float dt, Vector2 target)
@@ -117,6 +126,14 @@ namespace NightCourier.Core
             for (int i = 0; i < Count; i++)
             {
                 float speed = _t.Stats(Kind[i]).speed;
+                if (Kind[i] == EnemyKind.Elite)
+                {
+                    // Elites don't chase or get shoved: they hold their line, so you can tuck in behind them.
+                    X[i] += MathF.Cos(Heading[i]) * speed * dt;
+                    Y[i] += MathF.Sin(Heading[i]) * speed * dt;
+                    continue;
+                }
+
                 float dx = target.X - X[i], dy = target.Y - Y[i];
                 float d = MathF.Sqrt(dx * dx + dy * dy);
                 float step = d > 1e-4f ? MathF.Min(speed * dt, d) / d : 0f;

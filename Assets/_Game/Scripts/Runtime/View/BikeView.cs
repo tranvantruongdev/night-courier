@@ -36,7 +36,7 @@ namespace NightCourier.View
 
         public Transform Body => _bike.transform;
 
-        public void Sync(BikeMotor bike, bool invulnerable, float dt)
+        public void Sync(BikeMotor bike, bool invulnerable, bool boosted, float dt)
         {
             var position = new Vector3(bike.Position.X, bike.Position.Y, 0f);
             _bike.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, 0f, bike.Heading * Mathf.Rad2Deg));
@@ -44,11 +44,12 @@ namespace NightCourier.View
 
             bool blink = invulnerable && Mathf.Repeat(Time.time * 16f, 2f) < 1f;
             _bike.color = blink ? new Color(1f, 1f, 1f, 0.35f) : Palette.Bike;
-            Color haloColor = bike.CanDodge ? Palette.Bonus : Palette.Bike;
-            haloColor.a = bike.CanDodge ? 0.55f : 0.2f;
+            bool gold = bike.CanDodge || boosted;
+            Color haloColor = gold ? Palette.Bonus : Palette.Bike;
+            haloColor.a = boosted ? 0.85f : gold ? 0.55f : 0.2f;
             _halo.color = haloColor;
 
-            Color trailColor = bike.CanDodge ? Palette.Bonus : Palette.Bike;
+            Color trailColor = gold ? Palette.Bonus : Palette.Bike;
             for (int i = 0; i < TrailLength; i++)
             {
                 var c = _trail[i].color;

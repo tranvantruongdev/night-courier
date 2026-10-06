@@ -56,6 +56,18 @@ namespace NightCourier.Core
 
         public EnemyStats scout = new EnemyStats { speed = 2.8f, hp = 6f, contactDamage = 6f, radius = 0.3f };
         public EnemyStats hauler = new EnemyStats { speed = 1.3f, hp = 30f, contactDamage = 14f, radius = 0.55f };
+        public EnemyStats elite = new EnemyStats { speed = 3.2f, hp = 120f, contactDamage = 20f, radius = 0.7f };
+
+        // Elites and drafting: an elite every minute from 1:00; riding within draftRange behind one (and within
+        // draftLateral of its line) for draftSeconds gives +draftBoost speed for draftBoostSeconds.
+        public float firstEliteAt = 60f;
+        public float eliteEvery = 60f;
+        public int eliteXp = 25;
+        public float draftRange = 1.2f;
+        public float draftLateral = 0.5f;
+        public float draftSeconds = 1.5f;
+        public float draftBoost = 0.3f;
+        public float draftBoostSeconds = 2f;
 
         // Spawning: a steady ramp for now; the wave director replaces it.
         public float spawnDistance = 13f;
@@ -135,9 +147,14 @@ namespace NightCourier.Core
         public int scoutXp = 2;
         public int haulerXp = 5;
 
-        public EnemyStats Stats(EnemyKind kind) => kind == EnemyKind.Hauler ? hauler : scout;
+        public EnemyStats Stats(EnemyKind kind) => kind switch
+        {
+            EnemyKind.Hauler => hauler,
+            EnemyKind.Elite => elite,
+            _ => scout,
+        };
 
-        public float MaxEnemyRadius => Math.Max(scout.radius, hauler.radius);
+        public float MaxEnemyRadius => Math.Max(Math.Max(scout.radius, hauler.radius), elite.radius);
 
         public static RideTuning Default() => new RideTuning();
     }

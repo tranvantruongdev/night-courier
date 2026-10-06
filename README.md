@@ -6,8 +6,8 @@ fixed-gear bike, has to ride until dawn.
 
 > **Status (Oct 2026): week 2 of 5, in progress.** The bike, the swarm, all six weapons (Headlight, Spoke Cards,
 > Bell, Chain Whip, Tyre Spikes, Pannier Drone), six passives, XP parcels and level-up cards work in Unity 6.3
-> LTS, with a wave curve setting the swarm size, Market Street as map 1 and four weapon evolutions; elites,
-> the 3:00/6:00 events and the first boss come next. 89 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
+> LTS, with a wave curve setting the swarm size, Market Street as map 1, four weapon evolutions, and elites you
+> can draft behind; Splitter and Zapper drones, the 3:00/6:00 events and the first boss come next. 93 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
 > levels up through the card popup, crashes, saves the result and runs a 300-drone stress ride. The
 > screenshots below come from that test.
 
@@ -37,6 +37,8 @@ fixed-gear bike, has to ride until dawn.
   **Tyre Spikes** leave a burning trail that lasts longer the faster you ride, and the **Pannier Drone** fires
   homing shots. Drones drop parcels; collect XP to level up and pick 1 of 3
   cards (items you own come up more often).
+- **Drafting:** from 1:00, an elite cruises across your path every minute. Tuck in right behind it for 1.5 s
+  and you get +30% speed for 2 s.
 
 ## How it's built
 
@@ -68,7 +70,7 @@ dotnet test Tools/CoreTests/Template.Core.Tests.csproj       # template core
 In Unity (headless, Windows):
 
 ```bash
-powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 89 EditMode tests
+powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 93 EditMode tests
 powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1 -TestPlatform PlayMode -Graphics   # smoke test + screenshots in Logs/screenshots
 ```
 

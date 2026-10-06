@@ -189,7 +189,7 @@ namespace NightCourier
             }
 
             var bike = _ride.Bike;
-            _bikeView.Sync(bike, _ride.Invulnerable, Time.deltaTime);
+            _bikeView.Sync(bike, _ride.Invulnerable, _ride.Boosted, Time.deltaTime);
             _swarmView.Sync(_ride.Swarm, new Vector2(bike.Position.X, bike.Position.Y));
             _weaponsView.Sync(_ride, Time.deltaTime);
             _hud.SetTime(_ride.Time);
@@ -235,6 +235,11 @@ namespace NightCourier
                 case RideEventType.LevelUp:
                     _audio.PlaySfx(_levelSound);
                     Haptics.Medium();
+                    break;
+                case RideEventType.Drafted:
+                    _audio.PlaySfx(_levelSound, 0.7f, 1.5f);
+                    Haptics.Medium();
+                    JuiceFx.Punch(_bikeView.Body, 0.3f);
                     break;
                 case RideEventType.WhipCracked:
                     _weaponsView.CrackWhip(new Vector2(e.x, e.y), e.value, _ride.Arsenal.WhipRange);

@@ -11,6 +11,8 @@ namespace NightCourier.View
     /// </summary>
     public sealed class SwarmView
     {
+        private static readonly Vector3 EliteScale = Vector3.one * 2.3f;
+
         private readonly Transform _root;
         private readonly List<SpriteRenderer> _pool = new List<SpriteRenderer>();
         private int _shown;
@@ -35,16 +37,15 @@ namespace NightCourier.View
             for (int i = 0; i < swarm.Count; i++)
             {
                 var r = _pool[i];
-                bool hauler = swarm.Kind[i] == EnemyKind.Hauler;
-                var sprite = hauler ? NeonArt.Hauler : NeonArt.Scout;
-                if (r.sprite != sprite)
-                {
-                    r.sprite = sprite;
-                    r.color = hauler ? Palette.Hauler : Palette.Scout;
-                }
+                var kind = swarm.Kind[i];
+                r.sprite = kind == EnemyKind.Hauler ? NeonArt.Hauler : NeonArt.Scout;
+                r.color = kind == EnemyKind.Hauler ? Palette.Hauler : kind == EnemyKind.Elite ? Palette.Elite : Palette.Scout;
+                r.transform.localScale = kind == EnemyKind.Elite ? EliteScale : Vector3.one;
 
                 float x = swarm.X[i], y = swarm.Y[i];
-                float angle = Mathf.Atan2(bike.y - y, bike.x - x) * Mathf.Rad2Deg;
+                float angle = kind == EnemyKind.Elite
+                    ? swarm.Heading[i] * Mathf.Rad2Deg // elites face where they're going
+                    : Mathf.Atan2(bike.y - y, bike.x - x) * Mathf.Rad2Deg;
                 r.transform.SetPositionAndRotation(new Vector3(x, y, 0f), Quaternion.Euler(0f, 0f, angle));
                 r.enabled = true;
             }

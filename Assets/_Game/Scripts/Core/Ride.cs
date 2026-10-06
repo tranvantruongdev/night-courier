@@ -15,6 +15,7 @@ namespace NightCourier.Core
         LevelUp,
         BellRang,
         WhipCracked,
+        Drafted,
     }
 
     /// <summary>Something the view should react to (sound, haptics, flash, text).</summary>
@@ -41,6 +42,9 @@ namespace NightCourier.Core
         private readonly SeededRandom _rng;
         private readonly double[] _rollScratch = new double[Loadout.ItemCount];
         private float _invulnerable;
+        private float _nextElite;
+        private float _draftTime;
+        private float _boostLeft;
 
         public Ride(RideTuning tuning, ulong seed)
         {
@@ -53,8 +57,15 @@ namespace NightCourier.Core
             Loadout.Upgrade(ItemKind.Headlight); // Kai starts with a headlight
             Arsenal = new Arsenal(tuning, Loadout, Swarm);
             Hp = tuning.maxHp;
+            _nextElite = tuning.firstEliteAt;
             TopUp();
         }
+
+        /// <summary>The drafting speed burst is on.</summary>
+        public bool Boosted => _boostLeft > 0f;
+
+        /// <summary>0..1 of the time needed behind an elite to trigger the burst.</summary>
+        public float DraftProgress => _draftTime / _t.draftSeconds;
 
         public BikeMotor Bike { get; }
         public Swarm Swarm { get; }
@@ -96,6 +107,8 @@ namespace NightCourier.Core
             Bike.Step(dt, stick);
             RecycleStragglers();
             Swarm.Step(dt, Bike.Position);
+            SpawnElites();
+            Draft(dt, events);
             Arsenal.Fire(dt, Bike, events);
             Reap(events);
             TopUp();
@@ -128,10 +141,53 @@ namespace NightCourier.Core
         /// <summary>Lighter Frame (+speed), Better Brakes (keep the bonus while braking, softer turns), Energy Gel (regen).</summary>
         private void ApplyPassives(float dt)
         {
-            Bike.SpeedScale = 1f + _t.frameSpeedPerLevel * Loadout.Level(ItemKind.LighterFrame);
+            _boostLeft = MathF.Max(0f, _boostLeft - dt);
+            Bike.SpeedScale = (1f + _t.frameSpeedPerLevel * Loadout.Level(ItemKind.LighterFrame)) * (Boosted ? 1f + _t.draftBoost : 1f);
             Bike.KeepBonusWhileBraking = Loadout.Owns(ItemKind.BetterBrakes);
             Bike.TurnLossScale = MathF.Max(0f, 1f - _t.brakesTurnLossPerLevel * Loadout.Level(ItemKind.BetterBrakes));
             Hp = MathF.Min(_t.maxHp, Hp + _t.gelRegenPerLevel * Loadout.Level(ItemKind.EnergyGel) * dt);
+        }
+
+        /// <summary>An elite every minute, spawned ahead on the bike's line and riding the same way, a little slower.</summary>
+        private void SpawnElites()
+        {
+            if (Time < _nextElite)
+            {
+                return;
+            }
+
+            _nextElite += _t.eliteEvery;
+            Vector2 at = Bike.Position + Bike.Forward * (_t.spawnDistance * 0.7f);
+            Swarm.Spawn(EnemyKind.Elite, at.X, at.Y, WaveDirector.HpScale(Time, _t.hpPerMinute), Bike.Heading);
+        }
+
+        /// <summary>Riding in an elite's slipstream fills the draft meter; full, it fires the speed burst.</summary>
+        private void Draft(float dt, List<RideEvent> events)
+        {
+            bool drafting = false;
+            Vector2 p = Bike.Position;
+            float near = _t.bikeRadius + _t.elite.radius;
+            for (int i = 0; i < Swarm.Count && !drafting; i++)
+            {
+                if (Swarm.Kind[i] != EnemyKind.Elite)
+                {
+                    continue;
+                }
+
+                float hx = MathF.Cos(Swarm.Heading[i]), hy = MathF.Sin(Swarm.Heading[i]);
+                float rx = p.X - Swarm.X[i], ry = p.Y - Swarm.Y[i];
+                float behind = -(rx * hx + ry * hy);
+                float lateral = MathF.Abs(rx * hy - ry * hx);
+                drafting = behind > near && behind <= near + _t.draftRange && lateral <= _t.draftLateral;
+            }
+
+            _draftTime = drafting ? _draftTime + dt : 0f;
+            if (_draftTime >= _t.draftSeconds)
+            {
+                _draftTime = 0f;
+                _boostLeft = _t.draftBoostSeconds;
+                events.Add(new RideEvent { type = RideEventType.Drafted, x = p.X, y = p.Y });
+            }
         }
 
         private void Reap(List<RideEvent> events)
@@ -144,7 +200,7 @@ namespace NightCourier.Core
                 }
 
                 float x = Swarm.X[i], y = Swarm.Y[i];
-                int xp = Swarm.Kind[i] == EnemyKind.Hauler ? _t.haulerXp : _t.scoutXp;
+                int xp = Swarm.Kind[i] switch { EnemyKind.Hauler => _t.haulerXp, EnemyKind.Elite => _t.eliteXp, _ => _t.scoutXp };
                 if (!Parcels.Add(x, y, xp))
                 {
                     GainXp(xp, events); // no room on the road: straight into the bag

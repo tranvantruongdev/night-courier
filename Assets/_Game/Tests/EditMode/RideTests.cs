@@ -17,6 +17,7 @@ namespace NightCourier.Core.Tests
         {
             var t = RideTuning.Default();
             t.waves = new WaveKey[0];
+            t.firstEliteAt = float.MaxValue;
             t.headlightDps = 0f;
             return t;
         }
@@ -70,6 +71,77 @@ namespace NightCourier.Core.Tests
         }
 
         [Test]
+        public void AnEliteArrivesEachMinuteAheadOnTheBikesLine()
+        {
+            var t = Quiet();
+            t.firstEliteAt = 0.5f;
+            t.eliteEvery = 1f;
+            var ride = new Ride(t, 1);
+
+            Run(ride, 0.6f, r => Vector2.Zero);
+            Assert.That(ride.Swarm.Count, Is.EqualTo(1));
+            Assert.That(ride.Swarm.Kind[0], Is.EqualTo(EnemyKind.Elite));
+            Assert.That(ride.Swarm.Y[0], Is.GreaterThan(ride.Bike.Position.Y + 5f), "ahead of a bike heading up");
+
+            float x = ride.Swarm.X[0], y = ride.Swarm.Y[0];
+            Run(ride, 0.25f, r => new Vector2(1f, 0f)); // the bike turns; the elite keeps its line
+            Assert.That(ride.Swarm.X[0], Is.EqualTo(x).Within(1e-3f));
+            Assert.That(ride.Swarm.Y[0] - y, Is.EqualTo(t.elite.speed * 0.25f).Within(0.01f));
+
+            Run(ride, 1f, r => Vector2.Zero);
+            Assert.That(ride.Swarm.Count, Is.EqualTo(2), "the next one a minute (here a second) later");
+        }
+
+        [Test]
+        public void RidingInAnElitesSlipstreamFiresTheSpeedBurst()
+        {
+            var t = Quiet();
+            t.headlightDps = 0f;
+            t.elite.speed = t.cruiseSpeed; // keeps the gap constant at cruise
+            var ride = new Ride(t, 1);
+            ride.Swarm.Spawn(EnemyKind.Elite, 0f, 1.6f, 1f, MathF.PI / 2f); // 1.6 ahead, heading up like the bike
+
+            var events = Run(ride, t.draftSeconds - 0.1f, r => Vector2.Zero);
+            Assert.That(events.Any(e => e.type == RideEventType.Drafted), Is.False);
+            Assert.That(ride.DraftProgress, Is.GreaterThan(0.9f));
+
+            events = Run(ride, 0.15f, r => Vector2.Zero);
+            Assert.That(events.Count(e => e.type == RideEventType.Drafted), Is.EqualTo(1));
+            Assert.That(ride.Boosted, Is.True);
+            Assert.That(ride.Bike.MaxSpeed, Is.EqualTo(t.maxSpeed * (1f + t.draftBoost)).Within(1e-4f));
+
+            Run(ride, t.draftBoostSeconds + 0.1f, r => new Vector2(1f, 0f)); // peel off; the burst wears off
+            Assert.That(ride.Boosted, Is.False);
+        }
+
+        [Test]
+        public void NoDraftBesideOrInFrontOfAnElite()
+        {
+            var t = Quiet();
+            t.headlightDps = 0f;
+            t.elite.speed = t.cruiseSpeed;
+            var ride = new Ride(t, 1);
+            ride.Swarm.Spawn(EnemyKind.Elite, 2f, 1.6f, 1f, MathF.PI / 2f);  // off to the side
+            ride.Swarm.Spawn(EnemyKind.Elite, 0f, -1.6f, 1f, MathF.PI / 2f); // behind the bike
+
+            var events = Run(ride, t.draftSeconds * 2f, r => Vector2.Zero);
+            Assert.That(events.Any(e => e.type == RideEventType.Drafted), Is.False);
+        }
+
+        [Test]
+        public void ElitesDropABigParcel()
+        {
+            var t = Quiet();
+            var ride = new Ride(t, 1);
+            ride.Swarm.Spawn(EnemyKind.Elite, 30f, 0f, 1f, 0f);
+            ride.Swarm.Hp[0] = 0f;
+
+            Run(ride, Dt, r => Vector2.Zero);
+            Assert.That(ride.Parcels.Count, Is.EqualTo(1));
+            Assert.That(ride.Parcels.Value[0], Is.EqualTo(t.eliteXp));
+        }
+
+        [Test]
         public void WaveCurveInterpolatesAndHoldsItsEnds()
         {
             var keys = new[] { new WaveKey(10f, 20, 0.1f), new WaveKey(20f, 40, 0.3f) };
@@ -87,6 +159,7 @@ namespace NightCourier.Core.Tests
             var t = RideTuning.Default();
             t.maxHp = 1e9f;
             t.waves = new[] { new WaveKey(0f, 0, 0f), new WaveKey(119f, 0, 0f), new WaveKey(120f, 1, 0f) }; // one scout at 2:00
+            t.firstEliteAt = float.MaxValue;
             var ride = new Ride(t, 1);
             t.headlightDps = 0f;
             Run(ride, 120.5f, r => Up);

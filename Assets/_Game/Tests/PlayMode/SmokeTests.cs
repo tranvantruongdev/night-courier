@@ -46,6 +46,9 @@ namespace NightCourier.PlayModeTests
             Assert.Greater(ride.Time, 5f, "the ride runs in the real game loop");
             Assert.Greater(ride.Bike.Position.Length(), 10f, "the bike keeps moving");
             Assert.GreaterOrEqual(ride.Swarm.Count, 30, "drones keep spawning");
+            var ahead = ride.Bike.Position + ride.Bike.Forward * 3.5f; // an elite in the shot (they come every minute)
+            ride.Swarm.Spawn(NightCourier.Core.EnemyKind.Elite, ahead.X, ahead.Y, 1f, ride.Bike.Heading);
+            yield return new WaitForSeconds(0.3f);
             Capture("2-riding");
 
             Call(controller, "Pause");
