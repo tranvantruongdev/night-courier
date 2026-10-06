@@ -36,6 +36,7 @@ namespace NightCourier.UI
         private readonly TextMeshProUGUI[] _cardTitles = new TextMeshProUGUI[LevelUpRoller.Cards];
         private readonly TextMeshProUGUI[] _cardLines = new TextMeshProUGUI[LevelUpRoller.Cards];
         private Action<int> _pick;
+        private Button _reroll;
         private const int ChartRows = 6;
         private const float ChartWidth = 400f;
         private readonly TextMeshProUGUI[] _chartNames = new TextMeshProUGUI[ChartRows];
@@ -49,6 +50,7 @@ namespace NightCourier.UI
         public event Action ResumePressed;
         public event Action RetryPressed;
         public event Action HomePressed;
+        public event Action RerollPressed;
 
         public FloatingJoystick Joystick { get; private set; }
 
@@ -114,6 +116,8 @@ namespace NightCourier.UI
 
             hud._levelUp = Panel(canvas.transform, "Level up!", out _, out _);
             var levelCard = hud._levelUp.transform.Find("Card");
+            hud._reroll = UiFactory.CreateButton(levelCard, "Reroll", new Vector2(285f, 330f), new Vector2(190f, 90f),
+                () => hud.RerollPressed?.Invoke(), ButtonStyle.Secondary);
             for (int i = 0; i < LevelUpRoller.Cards; i++)
             {
                 int index = i;
@@ -174,6 +178,7 @@ namespace NightCourier.UI
                 }
             }
 
+            _reroll.gameObject.SetActive(ride.RerollsLeft > 0);
             _levelUp.SetActive(true);
             Joystick.Release();
             Joystick.enabled = false;

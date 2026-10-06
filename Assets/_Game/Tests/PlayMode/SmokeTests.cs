@@ -35,6 +35,13 @@ namespace NightCourier.PlayModeTests
             yield return new WaitForSeconds(0.6f);
             Capture("1-title");
 
+            // The garage opens over Home and closes again.
+            ClickButton("Button Garage");
+            yield return new WaitForSecondsRealtime(0.3f);
+            Capture("1b-garage");
+            ClickButton("Button Close");
+            yield return new WaitForSecondsRealtime(0.2f);
+
             RideController.Autopilot = true;
             Services.Get<GameFlow>().GoToAsync(AppState.Game).Forget();
             yield return WaitForScene("Game", 20f);
@@ -157,6 +164,14 @@ namespace NightCourier.PlayModeTests
             yield return WaitForScene("Title", 20f);
             yield return new WaitForSeconds(0.6f);
             Capture("7-title-after-ride");
+        }
+
+        private static void ClickButton(string name)
+        {
+            var button = System.Linq.Enumerable.FirstOrDefault(Object.FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None),
+                b => b.name == name && b.gameObject.activeInHierarchy);
+            Assert.IsNotNull(button, $"{name} is on screen");
+            button.onClick.Invoke();
         }
 
         private static UnityEngine.UI.Button FirstCard() =>

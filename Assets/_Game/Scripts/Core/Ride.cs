@@ -63,6 +63,7 @@ namespace NightCourier.Core
         private int _nextOrb;
         private float _nextElite;
         private int _shiftEvent;
+        private float _xpCarry;
         private bool _bossSpawned;
         private float _bossSummon;
         private float _bossFan;
@@ -81,6 +82,7 @@ namespace NightCourier.Core
             Arsenal = new Arsenal(tuning, Loadout, Swarm);
             Hp = tuning.maxHp;
             _nextElite = tuning.firstEliteAt;
+            RerollsLeft = tuning.rerolls;
             TopUp();
         }
 
@@ -149,6 +151,22 @@ namespace NightCourier.Core
             TopUp();
             CollectParcels(dt, events);
             ResolveContact(events);
+        }
+
+        /// <summary>Card rerolls left this ride (from the garage).</summary>
+        public int RerollsLeft { get; private set; }
+
+        /// <summary>Swaps the cards on offer for a fresh roll, if a reroll is left.</summary>
+        public bool Reroll()
+        {
+            if (PendingLevelUps == 0 || RerollsLeft == 0)
+            {
+                return false;
+            }
+
+            RerollsLeft--;
+            RollOffer();
+            return true;
         }
 
         /// <summary>Takes card <paramref name="index"/> of <see cref="Offer"/> for the first pending level-up.</summary>
@@ -344,7 +362,11 @@ namespace NightCourier.Core
 
         private void GainXp(int xp, List<RideEvent> events)
         {
-            Xp += xp;
+            // XP gain from the garage can be fractional (1 XP × 1.1): the remainder carries to the next parcel.
+            _xpCarry += xp * _t.xpGain;
+            int whole = (int)(_xpCarry + 1e-4f); // 1.1 summed ten times is 10.9999… in float
+            _xpCarry -= whole;
+            Xp += whole;
             while (Xp >= XpNeeded)
             {
                 Xp -= XpNeeded;

@@ -118,6 +118,10 @@ namespace NightCourier.Core
         /// <summary>Drone HP × (1 + minutes × this).</summary>
         public float hpPerMinute = 0.15f;
 
+        // Garage upgrades land here (Garage.Apply): XP multiplier, card rerolls per ride.
+        public float xpGain = 1f;
+        public int rerolls;
+
         // Weapons: level-1 values, plus the per-level step for each level above 1.
         public float headlightRange = 3.5f;
         public float headlightRangePerLevel = 0.3f;

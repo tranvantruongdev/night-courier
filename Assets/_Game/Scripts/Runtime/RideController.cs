@@ -112,6 +112,13 @@ namespace NightCourier
             _hud.ResumePressed += Resume;
             _hud.RetryPressed += NewRide;
             _hud.HomePressed += GoHome;
+            _hud.RerollPressed += () =>
+            {
+                if (_choosing && _ride.Reroll())
+                {
+                    _hud.ShowLevelUp(_ride, OnCardPicked);
+                }
+            };
             AppLifecycle.BackPressed += OnBack;
             AppLifecycle.PauseChanged += OnAppPause;
 
@@ -128,6 +135,7 @@ namespace NightCourier
         private void NewRide()
         {
             var tuning = RideTuning.Default();
+            Garage.Apply(Services.Get<SaveService>().Data.GetGame<GarageData>(), tuning);
             if (StressDrones > 0)
             {
                 tuning.waves = WaveDirector.Flat(StressDrones);
@@ -312,6 +320,10 @@ namespace NightCourier
             bool newBest = seconds > save.Data.bestScore;
             save.Data.bestScore = Math.Max(save.Data.bestScore, seconds);
             save.Data.totalRuns++;
+            var garage = save.Data.GetGame<GarageData>();
+            int earned = Garage.CoinsFor(_ride);
+            garage.coins += earned;
+            save.Data.SetGame(garage);
             save.MarkDirty();
             save.Save();
 
@@ -328,7 +340,7 @@ namespace NightCourier
 
             chart.Sort((a, b) => b.damage.CompareTo(a.damage));
             _hud.ShowResults(won ? "Delivered!" : "Shift over",
-                $"{Loc("Survived")} {Clock(seconds)}  ·  {_ride.Kills} {Loc("kills")}  ·  {Loc("Lv")} {_ride.Level}\n{best}", chart);
+                $"{Loc("Survived")} {Clock(seconds)}  ·  {_ride.Kills} {Loc("kills")}  ·  {Loc("Lv")} {_ride.Level}\n{best}  ·  +{earned} {Loc("coins")}", chart);
         }
 
         private static string Loc(string text) => Template.UI.UiFactory.Localize(text);
