@@ -19,6 +19,9 @@ namespace NightCourier.Core
 
         /// <summary>A scripted shift event started; value is a <see cref="ShiftEvent"/>.</summary>
         ShiftEvent,
+
+        /// <summary>The boss went down: the shift is won.</summary>
+        Won,
     }
 
     public enum ShiftEvent
@@ -26,6 +29,7 @@ namespace NightCourier.Core
         Ring,
         Horde,
         EliteGroup,
+        Boss,
     }
 
     /// <summary>Something the view should react to (sound, haptics, flash, text).</summary>
@@ -59,6 +63,9 @@ namespace NightCourier.Core
         private int _nextOrb;
         private float _nextElite;
         private int _shiftEvent;
+        private bool _bossSpawned;
+        private float _bossSummon;
+        private float _bossFan;
         private float _draftTime;
         private float _boostLeft;
 
@@ -97,6 +104,9 @@ namespace NightCourier.Core
         public float Hp { get; private set; }
         public float Time { get; private set; }
         public bool Over { get; private set; }
+
+        /// <summary>The boss is down: the shift ended in a win (<see cref="Over"/> is also true).</summary>
+        public bool Won { get; private set; }
         public bool Invulnerable => _invulnerable > 0f;
         public int Kills { get; private set; }
         public int Level { get; private set; } = 1;
@@ -130,6 +140,7 @@ namespace NightCourier.Core
             Swarm.Step(dt, Bike.Position);
             SpawnElites();
             RunShiftEvents(events);
+            RunBoss(dt, events);
             Draft(dt, events);
             FireZappers(dt);
             MoveOrbs(dt, events);
@@ -289,6 +300,13 @@ namespace NightCourier.Core
                 var kind = Swarm.Kind[i];
                 events.Add(new RideEvent { type = RideEventType.Killed, x = x, y = y, value = (float)kind });
                 Swarm.RemoveAt(i); // the last drone moves into i; it was already checked
+                if (kind == EnemyKind.Boss)
+                {
+                    Won = true;
+                    Over = true;
+                    events.Add(new RideEvent { type = RideEventType.Won, x = x, y = y });
+                }
+
                 if (kind == EnemyKind.Splitter)
                 {
                     // Two scouts burst out; they land past the end of the list, so this loop won't reap them.
@@ -410,13 +428,66 @@ namespace NightCourier.Core
                 }
 
                 Swarm.Timer[i] = _t.zapperEvery;
-                int o = _nextOrb;
-                _nextOrb = (_nextOrb + 1) % MaxOrbs;
-                OrbX[o] = Swarm.X[i];
-                OrbY[o] = Swarm.Y[i];
-                _orbVX[o] = dx / d * _t.orbSpeed;
-                _orbVY[o] = dy / d * _t.orbSpeed;
-                OrbLife[o] = _t.orbLife;
+                FireOrb(Swarm.X[i], Swarm.Y[i], MathF.Atan2(dy, dx));
+            }
+        }
+
+        private void FireOrb(float x, float y, float angle)
+        {
+            int o = _nextOrb;
+            _nextOrb = (_nextOrb + 1) % MaxOrbs;
+            OrbX[o] = x;
+            OrbY[o] = y;
+            _orbVX[o] = MathF.Cos(angle) * _t.orbSpeed;
+            _orbVY[o] = MathF.Sin(angle) * _t.orbSpeed;
+            OrbLife[o] = _t.orbLife;
+        }
+
+        /// <summary>The Dispatcher: arrives at the end of the shift, calls drones around itself, fires fans of orbs.</summary>
+        private void RunBoss(float dt, List<RideEvent> events)
+        {
+            Vector2 p = Bike.Position;
+            if (!_bossSpawned && Time >= _t.shiftSeconds)
+            {
+                _bossSpawned = true;
+                Vector2 at = p + Bike.Forward * (_t.spawnDistance * 0.8f);
+                Swarm.Spawn(EnemyKind.Boss, at.X, at.Y);
+                _bossSummon = 1f; // first wave a second after it shows
+                _bossFan = _t.bossFanEvery;
+                events.Add(new RideEvent { type = RideEventType.ShiftEvent, x = at.X, y = at.Y, value = (float)ShiftEvent.Boss });
+            }
+
+            if (!Swarm.HasBoss)
+            {
+                return;
+            }
+
+            int b = 0;
+            while (Swarm.Kind[b] != EnemyKind.Boss)
+            {
+                b++;
+            }
+
+            float bx = Swarm.X[b], by = Swarm.Y[b];
+            if ((_bossSummon -= dt) <= 0f)
+            {
+                _bossSummon = _t.bossSummonEvery;
+                float r = _t.boss.radius + 0.8f;
+                for (int k = 0; k < _t.bossSummonCount; k++)
+                {
+                    float a = k * 2f * MathF.PI / _t.bossSummonCount;
+                    Swarm.Spawn(EnemyKind.Scout, bx + MathF.Cos(a) * r, by + MathF.Sin(a) * r, WaveDirector.HpScale(Time, _t.hpPerMinute));
+                }
+            }
+
+            if ((_bossFan -= dt) <= 0f)
+            {
+                _bossFan = _t.bossFanEvery;
+                float aim = MathF.Atan2(p.Y - by, p.X - bx);
+                for (int k = 0; k < _t.bossFanOrbs; k++)
+                {
+                    FireOrb(bx, by, aim + (k - (_t.bossFanOrbs - 1) * 0.5f) * 0.25f);
+                }
             }
         }
 
@@ -492,6 +563,11 @@ namespace NightCourier.Core
         /// <summary>A hit from anything: starts the invulnerability window, may be dodged at speed, armour applies.</summary>
         private void TakeHit(float rawDamage, List<RideEvent> events)
         {
+            if (Over)
+            {
+                return; // the boss went down this step: nothing after the win counts
+            }
+
             Vector2 p = Bike.Position;
             _invulnerable = _t.invulnerableSeconds;
             if (Bike.CanDodge && _rng.Chance(_t.dodgeChance))

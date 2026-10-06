@@ -18,6 +18,7 @@ namespace NightCourier.Art
         public static readonly Color Elite = Hex(0xFFF1C2);
         public static readonly Color Splitter = Hex(0xFF9A3C);
         public static readonly Color Zapper = Hex(0x9BFF4E);
+        public static readonly Color Boss = Hex(0xFF5A1F);
 
         /// <summary>Enemy shots only: nothing else in the game is magenta.</summary>
         public static readonly Color Orb = Hex(0xFF3EF0);

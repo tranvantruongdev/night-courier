@@ -14,6 +14,7 @@ namespace NightCourier.View
         private static readonly Vector3 EliteScale = Vector3.one * 2.3f;
         private static readonly Vector3 SplitterScale = Vector3.one * 1.35f;
         private static readonly Vector3 ZapperScale = Vector3.one * 0.65f;
+        private static readonly Vector3 BossScale = Vector3.one * 2.9f; // hauler art (0.55 u) to the boss's 1.6 u
 
         private readonly SpriteRenderer[] _orbs = new SpriteRenderer[Ride.MaxOrbs];
 
@@ -66,7 +67,7 @@ namespace NightCourier.View
             {
                 var r = _pool[i];
                 var kind = swarm.Kind[i];
-                bool square = kind == EnemyKind.Hauler || kind == EnemyKind.Zapper;
+                bool square = kind == EnemyKind.Hauler || kind == EnemyKind.Zapper || kind == EnemyKind.Boss;
                 r.sprite = square ? NeonArt.Hauler : NeonArt.Scout;
                 r.color = kind switch
                 {
@@ -74,6 +75,7 @@ namespace NightCourier.View
                     EnemyKind.Elite => Palette.Elite,
                     EnemyKind.Splitter => Palette.Splitter,
                     EnemyKind.Zapper => Palette.Zapper,
+                    EnemyKind.Boss => Palette.Boss,
                     _ => Palette.Scout,
                 };
                 r.transform.localScale = kind switch
@@ -81,6 +83,7 @@ namespace NightCourier.View
                     EnemyKind.Elite => EliteScale,
                     EnemyKind.Splitter => SplitterScale,
                     EnemyKind.Zapper => ZapperScale,
+                    EnemyKind.Boss => BossScale,
                     _ => Vector3.one,
                 };
 

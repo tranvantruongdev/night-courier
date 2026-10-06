@@ -80,6 +80,15 @@ namespace NightCourier.Core
         public float hordeAt = 360f;
         public int hordeCount = 60;
         public float eliteGroupAt = 510f;
+
+        // The Dispatcher arrives at shiftSeconds; beating it ends the shift with a win. Every bossSummonEvery it calls
+        // bossSummonCount scouts around itself; every bossFanEvery it fires bossFanOrbs orbs in a fan at the bike.
+        public float shiftSeconds = 600f;
+        public EnemyStats boss = new EnemyStats { speed = 1.6f, hp = 1500f, contactDamage = 30f, radius = 1.6f };
+        public float bossSummonEvery = 4f;
+        public int bossSummonCount = 8;
+        public float bossFanEvery = 1.5f;
+        public int bossFanOrbs = 5;
         public int eliteGroupCount = 3;
 
         // Elites and drafting: an elite every minute from 1:00; riding within draftRange behind one (and within
@@ -177,10 +186,12 @@ namespace NightCourier.Core
             EnemyKind.Elite => elite,
             EnemyKind.Splitter => splitter,
             EnemyKind.Zapper => zapper,
+            EnemyKind.Boss => boss,
             _ => scout,
         };
 
-        public float MaxEnemyRadius => Math.Max(Math.Max(scout.radius, hauler.radius), elite.radius);
+        /// <summary>Largest drone radius, the boss left out (queries pad for it only while one is alive: <see cref="Swarm.HasBoss"/>).</summary>
+        public float MaxEnemyRadius => Math.Max(Math.Max(scout.radius, hauler.radius), Math.Max(elite.radius, splitter.radius));
 
         public static RideTuning Default() => new RideTuning();
     }

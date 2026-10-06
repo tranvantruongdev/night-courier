@@ -70,6 +70,9 @@ namespace NightCourier.Core
         private readonly float[] _shotVY = new float[MaxShots];
         private readonly float[] _shotDamage = new float[MaxShots];
 
+        /// <summary>How far past a hit area to look for drone centres: the biggest drone radius, the boss's while it is out.</summary>
+        private float QueryPad => _swarm.HasBoss ? _t.boss.radius : _t.MaxEnemyRadius;
+
         private float Cooldown(float seconds) => seconds * (1f - _t.gearCooldownPerLevel * _loadout.Level(ItemKind.GearRatio));
 
         public void Fire(float dt, BikeMotor bike, List<RideEvent> events)
@@ -175,7 +178,7 @@ namespace NightCourier.Core
                 ShotX[s] += _shotVX[s] * dt;
                 ShotY[s] += _shotVY[s] * dt;
 
-                int found = _swarm.Grid.Query(ShotX[s], ShotY[s], ShotRadius + _t.MaxEnemyRadius, _near);
+                int found = _swarm.Grid.Query(ShotX[s], ShotY[s], ShotRadius + QueryPad, _near);
                 for (int k = 0; k < found; k++)
                 {
                     int i = _near[k];
@@ -224,7 +227,7 @@ namespace NightCourier.Core
             Vector2 p = bike.Position;
             events.Add(new RideEvent { type = RideEventType.WhipCracked, x = p.X, y = p.Y, value = centre });
 
-            int found = _swarm.Grid.Query(p.X, p.Y, range + _t.MaxEnemyRadius, _near);
+            int found = _swarm.Grid.Query(p.X, p.Y, range + QueryPad, _near);
             for (int k = 0; k < found; k++)
             {
                 int i = _near[k];
@@ -260,7 +263,7 @@ namespace NightCourier.Core
                 }
 
                 SpikeLife[s] -= dt;
-                int found = _swarm.Grid.Query(SpikeX[s], SpikeY[s], radius + _t.MaxEnemyRadius, _near);
+                int found = _swarm.Grid.Query(SpikeX[s], SpikeY[s], radius + QueryPad, _near);
                 for (int k = 0; k < found; k++)
                 {
                     int i = _near[k];
@@ -282,7 +285,7 @@ namespace NightCourier.Core
             float damage = (_t.headlightDps + _t.headlightDpsPerLevel * (level - 1)) * Power(ItemKind.Headlight) * bonus * dt;
             Vector2 p = bike.Position, forward = bike.Forward;
 
-            int found = _swarm.Grid.Query(p.X, p.Y, range + _t.MaxEnemyRadius, _near);
+            int found = _swarm.Grid.Query(p.X, p.Y, range + QueryPad, _near);
             for (int k = 0; k < found; k++)
             {
                 int i = _near[k];
@@ -310,7 +313,7 @@ namespace NightCourier.Core
                 float angle = SpokeAngle + b * 2f * MathF.PI / blades;
                 float bx = bike.Position.X + MathF.Cos(angle) * _t.spokeOrbit;
                 float by = bike.Position.Y + MathF.Sin(angle) * _t.spokeOrbit;
-                int found = _swarm.Grid.Query(bx, by, SpokeRadius + _t.MaxEnemyRadius, _near);
+                int found = _swarm.Grid.Query(bx, by, SpokeRadius + QueryPad, _near);
                 for (int k = 0; k < found; k++)
                 {
                     int i = _near[k];
@@ -332,7 +335,7 @@ namespace NightCourier.Core
             Vector2 p = bike.Position;
             events.Add(new RideEvent { type = RideEventType.BellRang, x = p.X, y = p.Y, value = radius });
 
-            int found = _swarm.Grid.Query(p.X, p.Y, radius + _t.MaxEnemyRadius, _near);
+            int found = _swarm.Grid.Query(p.X, p.Y, radius + QueryPad, _near);
             for (int k = 0; k < found; k++)
             {
                 int i = _near[k];

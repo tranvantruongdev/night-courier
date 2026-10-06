@@ -16,6 +16,9 @@ namespace NightCourier.Core
 
         /// <summary>Hangs back at range and fires slow orbs.</summary>
         Zapper,
+
+        /// <summary>The Dispatcher, map 1's boss at 10:00: summons drones and fires fans of orbs.</summary>
+        Boss,
     }
 
     /// <summary>
@@ -30,6 +33,7 @@ namespace NightCourier.Core
         private readonly float[] _pushY;
         // ponytail: candidates past 256 per drone are skipped (only in extreme piles: less push, no error); grow it if drones visibly stack.
         private readonly int[] _neighbours = new int[256];
+        private int _bosses;
 
         public Swarm(RideTuning tuning)
         {
@@ -57,6 +61,9 @@ namespace NightCourier.Core
         /// <summary>Seconds; zappers count down to their next shot.</summary>
         public float[] Timer { get; }
         public int Count { get; private set; }
+
+        /// <summary>A boss is among the live drones.</summary>
+        public bool HasBoss => _bosses > 0;
         public int Capacity => X.Length;
 
         /// <summary>Built from the positions at the start of the last <see cref="Step"/>.</summary>
@@ -74,6 +81,10 @@ namespace NightCourier.Core
             X[i] = x;
             Y[i] = y;
             Kind[i] = kind;
+            if (kind == EnemyKind.Boss)
+            {
+                _bosses++;
+            }
             Hp[i] = _t.Stats(kind).hp * hpScale;
             Heading[i] = heading;
             Timer[i] = 0f;
@@ -82,6 +93,11 @@ namespace NightCourier.Core
 
         public void RemoveAt(int i)
         {
+            if (Kind[i] == EnemyKind.Boss)
+            {
+                _bosses--;
+            }
+
             int last = --Count;
             X[i] = X[last];
             Y[i] = Y[last];
@@ -138,6 +154,20 @@ namespace NightCourier.Core
             for (int i = 0; i < Count; i++)
             {
                 float speed = _t.Stats(Kind[i]).speed;
+                if (Kind[i] == EnemyKind.Boss)
+                {
+                    // The boss bears down on the bike and shoulders through the swarm.
+                    float bx = target.X - X[i], by = target.Y - Y[i];
+                    float bd = MathF.Sqrt(bx * bx + by * by);
+                    if (bd > 1e-4f)
+                    {
+                        X[i] += bx / bd * speed * dt;
+                        Y[i] += by / bd * speed * dt;
+                    }
+
+                    continue;
+                }
+
                 if (Kind[i] == EnemyKind.Elite)
                 {
                     // Elites don't chase or get shoved: they hold their line, so you can tuck in behind them.

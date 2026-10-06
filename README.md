@@ -8,7 +8,8 @@ fixed-gear bike, has to ride until dawn.
 > Bell, Chain Whip, Tyre Spikes, Pannier Drone), six passives, XP parcels and level-up cards work in Unity 6.3
 > LTS, with a wave curve setting the swarm size, Market Street as map 1, four weapon evolutions, and elites you
 > can draft behind, Splitter and Zapper drones, the 3:00 / 6:00 / 8:30 shift events and a damage-per-weapon
-> chart on the results; the first boss comes next. 95 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
+> chart on the results, and the Dispatcher boss at 10:00, whose defeat wins the shift. Week 4 (garage, map 2)
+> comes next. 97 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
 > levels up through the card popup, crashes, saves the result and runs a 300-drone stress ride. The
 > screenshots below come from that test.
 
@@ -73,7 +74,7 @@ dotnet test Tools/CoreTests/Template.Core.Tests.csproj       # template core
 In Unity (headless, Windows):
 
 ```bash
-powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 95 EditMode tests
+powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 97 EditMode tests
 powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1 -TestPlatform PlayMode -Graphics   # smoke test + screenshots in Logs/screenshots
 ```
 

@@ -229,7 +229,10 @@ namespace NightCourier
                     Haptics.Light();
                     break;
                 case RideEventType.Died:
-                    OnCrashed().Forget();
+                    OnShiftEnded(false).Forget();
+                    break;
+                case RideEventType.Won:
+                    OnShiftEnded(true).Forget();
                     break;
                 case RideEventType.Killed:
                     _audio.PlaySfx(_killSound, 0.5f, UnityEngine.Random.Range(0.85f, 1.2f));
@@ -267,6 +270,7 @@ namespace NightCourier
             "Dispatch: They're circling you. Break out!",
             "Dispatch: Big wave coming from one side. Cut across it, not into it.",
             "Dispatch: Three heavy drones on your line. Draft them!",
+            "Dispatch: That's the Dispatcher. Take it down and you're home by dawn!",
         };
 
         private void Radio(string line)
@@ -287,11 +291,16 @@ namespace NightCourier
             _choosing = false; // another pending level-up shows its cards next frame
         }
 
-        private async UniTaskVoid OnCrashed()
+        /// <summary>The shift ends either way: crashed (HP 0) or won (the Dispatcher is down).</summary>
+        private async UniTaskVoid OnShiftEnded(bool won)
         {
             _phase.Go(Phase.Over);
-            _audio.PlaySfx(_crashSound);
+            _audio.PlaySfx(won ? _levelSound : _crashSound);
             Haptics.Heavy();
+            if (won)
+            {
+                Radio("Dispatch: Package delivered. Good ride, Kai.");
+            }
 
             // A moment of slow motion, then the results.
             Time.timeScale = JuiceFx.ReduceMotion ? 1f : 0.3f;
@@ -318,7 +327,7 @@ namespace NightCourier
             }
 
             chart.Sort((a, b) => b.damage.CompareTo(a.damage));
-            _hud.ShowResults("Shift over",
+            _hud.ShowResults(won ? "Delivered!" : "Shift over",
                 $"{Loc("Survived")} {Clock(seconds)}  ·  {_ride.Kills} {Loc("kills")}  ·  {Loc("Lv")} {_ride.Level}\n{best}", chart);
         }
 

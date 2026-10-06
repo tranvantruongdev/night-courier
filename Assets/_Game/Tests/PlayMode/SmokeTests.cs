@@ -127,6 +127,32 @@ namespace NightCourier.PlayModeTests
             Capture("6-stress-300");
             Assert.IsFalse(controller.IsOver, "stress rides take no damage");
 
+            // The Dispatcher: in the shot with its orb fans, then down: the shift is won.
+            var boss = controller.Ride;
+            var front = boss.Bike.Position + boss.Bike.Forward * 6f;
+            int b = boss.Swarm.Spawn(NightCourier.Core.EnemyKind.Boss, front.X, front.Y);
+            boss.Swarm.Hp[b] = 1e6f;
+            yield return new WaitForSeconds(1.8f);
+            Capture("6b-boss");
+            for (int i = 0; i < boss.Swarm.Count; i++)
+            {
+                if (boss.Swarm.Kind[i] == NightCourier.Core.EnemyKind.Boss)
+                {
+                    boss.Swarm.Hp[i] = 0f;
+                }
+            }
+
+            float waitedForWin = 0f;
+            while (!controller.IsOver && waitedForWin < 3f)
+            {
+                waitedForWin += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.IsTrue(boss.Won, "downing the boss wins the shift");
+            yield return new WaitForSecondsRealtime(1.2f);
+            Capture("6c-delivered");
+
             Services.Get<GameFlow>().GoToAsync(AppState.Title).Forget();
             yield return WaitForScene("Title", 20f);
             yield return new WaitForSeconds(0.6f);

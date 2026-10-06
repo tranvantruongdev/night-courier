@@ -17,7 +17,7 @@ namespace NightCourier.Core.Tests
         {
             var t = RideTuning.Default();
             t.waves = new WaveKey[0];
-            t.firstEliteAt = t.ringAt = t.hordeAt = t.eliteGroupAt = float.MaxValue;
+            t.firstEliteAt = t.ringAt = t.hordeAt = t.eliteGroupAt = t.shiftSeconds = float.MaxValue;
             t.headlightDps = 0f;
             return t;
         }
@@ -226,6 +226,40 @@ namespace NightCourier.Core.Tests
 
             events = Run(ride, 1f, r => Vector2.Zero);
             Assert.That(events.Any(e => e.type == RideEventType.ShiftEvent), Is.False, "each event happens once");
+        }
+
+        [Test]
+        public void TheDispatcherArrivesAtTheEndOfTheShiftThenSummonsAndFires()
+        {
+            var t = Quiet();
+            t.headlightDps = 0f;
+            t.shiftSeconds = 0.05f;
+            var ride = new Ride(t, 1);
+
+            var events = Run(ride, 0.1f, r => Vector2.Zero);
+            Assert.That(ride.Swarm.HasBoss, Is.True);
+            Assert.That(events.Single(e => e.type == RideEventType.ShiftEvent).value, Is.EqualTo((float)ShiftEvent.Boss));
+
+            Run(ride, 1.5f, r => Vector2.Zero); // the first summon comes 1 s in, the first fan at 1.5 s
+            int scouts = ride.Swarm.Kind.Take(ride.Swarm.Count).Count(k => k == EnemyKind.Scout);
+            Assert.That(scouts, Is.EqualTo(t.bossSummonCount));
+            Assert.That(ride.OrbLife.Count(l => l > 0f), Is.EqualTo(t.bossFanOrbs), "a fan of orbs in flight");
+        }
+
+        [Test]
+        public void BeatingTheBossWinsTheShift()
+        {
+            var t = Quiet();
+            var ride = new Ride(t, 1);
+            ride.Swarm.Spawn(EnemyKind.Boss, 0f, 30f);
+            ride.Swarm.Hp[0] = 0f;
+
+            var events = Run(ride, 0.5f, r => Vector2.Zero);
+
+            Assert.That(ride.Won, Is.True);
+            Assert.That(ride.Over, Is.True);
+            Assert.That(ride.Swarm.HasBoss, Is.False);
+            Assert.That(events.Select(e => e.type), Has.Member(RideEventType.Won).And.No.Member(RideEventType.Died));
         }
 
         [Test]
