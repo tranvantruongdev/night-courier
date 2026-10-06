@@ -10,6 +10,12 @@ namespace NightCourier.Core
 
         /// <summary>Cruises straight across the city; ride close behind it to draft.</summary>
         Elite,
+
+        /// <summary>Splits into two scouts when it goes down.</summary>
+        Splitter,
+
+        /// <summary>Hangs back at range and fires slow orbs.</summary>
+        Zapper,
     }
 
     /// <summary>
@@ -34,6 +40,7 @@ namespace NightCourier.Core
             Hp = new float[n];
             Kind = new EnemyKind[n];
             Heading = new float[n];
+            Timer = new float[n];
             _pushX = new float[n];
             _pushY = new float[n];
             Grid = new SpatialGrid(tuning.gridCellSize, n);
@@ -46,6 +53,9 @@ namespace NightCourier.Core
 
         /// <summary>Radians; only elites use it (they cruise straight instead of chasing).</summary>
         public float[] Heading { get; }
+
+        /// <summary>Seconds; zappers count down to their next shot.</summary>
+        public float[] Timer { get; }
         public int Count { get; private set; }
         public int Capacity => X.Length;
 
@@ -66,6 +76,7 @@ namespace NightCourier.Core
             Kind[i] = kind;
             Hp[i] = _t.Stats(kind).hp * hpScale;
             Heading[i] = heading;
+            Timer[i] = 0f;
             return i;
         }
 
@@ -77,6 +88,7 @@ namespace NightCourier.Core
             Hp[i] = Hp[last];
             Kind[i] = Kind[last];
             Heading[i] = Heading[last];
+            Timer[i] = Timer[last];
         }
 
         public void Step(float dt, Vector2 target)
@@ -136,7 +148,8 @@ namespace NightCourier.Core
 
                 float dx = target.X - X[i], dy = target.Y - Y[i];
                 float d = MathF.Sqrt(dx * dx + dy * dy);
-                float step = d > 1e-4f ? MathF.Min(speed * dt, d) / d : 0f;
+                bool holding = Kind[i] == EnemyKind.Zapper && d <= _t.zapperRange; // zappers keep their distance
+                float step = d > 1e-4f && !holding ? MathF.Min(speed * dt, d) / d : 0f;
                 X[i] += dx * step + _pushX[i] * push;
                 Y[i] += dy * step + _pushY[i] * push;
             }

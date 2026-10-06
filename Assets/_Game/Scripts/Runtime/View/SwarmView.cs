@@ -12,6 +12,10 @@ namespace NightCourier.View
     public sealed class SwarmView
     {
         private static readonly Vector3 EliteScale = Vector3.one * 2.3f;
+        private static readonly Vector3 SplitterScale = Vector3.one * 1.35f;
+        private static readonly Vector3 ZapperScale = Vector3.one * 0.65f;
+
+        private readonly SpriteRenderer[] _orbs = new SpriteRenderer[Ride.MaxOrbs];
 
         private readonly Transform _root;
         private readonly List<SpriteRenderer> _pool = new List<SpriteRenderer>();
@@ -21,6 +25,30 @@ namespace NightCourier.View
         {
             _root = new GameObject("Swarm").transform;
             _root.SetParent(parent, false);
+            for (int i = 0; i < _orbs.Length; i++)
+            {
+                var go = new GameObject("Orb");
+                go.transform.SetParent(_root, false);
+                go.transform.localScale = Vector3.one * 1.6f; // Dot body radius 0.125 u x 1.6 = the 0.2 u hitbox
+                _orbs[i] = go.AddComponent<SpriteRenderer>();
+                _orbs[i].sprite = NeonArt.Dot;
+                _orbs[i].color = Palette.Orb;
+                _orbs[i].sortingOrder = 13; // above everything but the HUD: you have to see what's coming
+                _orbs[i].enabled = false;
+            }
+        }
+
+        public void SyncOrbs(Ride ride)
+        {
+            for (int o = 0; o < _orbs.Length; o++)
+            {
+                bool live = ride.OrbLife[o] > 0f;
+                _orbs[o].enabled = live;
+                if (live)
+                {
+                    _orbs[o].transform.position = new Vector3(ride.OrbX[o], ride.OrbY[o], 0f);
+                }
+            }
         }
 
         public void Sync(Swarm swarm, Vector2 bike)
@@ -38,9 +66,23 @@ namespace NightCourier.View
             {
                 var r = _pool[i];
                 var kind = swarm.Kind[i];
-                r.sprite = kind == EnemyKind.Hauler ? NeonArt.Hauler : NeonArt.Scout;
-                r.color = kind == EnemyKind.Hauler ? Palette.Hauler : kind == EnemyKind.Elite ? Palette.Elite : Palette.Scout;
-                r.transform.localScale = kind == EnemyKind.Elite ? EliteScale : Vector3.one;
+                bool square = kind == EnemyKind.Hauler || kind == EnemyKind.Zapper;
+                r.sprite = square ? NeonArt.Hauler : NeonArt.Scout;
+                r.color = kind switch
+                {
+                    EnemyKind.Hauler => Palette.Hauler,
+                    EnemyKind.Elite => Palette.Elite,
+                    EnemyKind.Splitter => Palette.Splitter,
+                    EnemyKind.Zapper => Palette.Zapper,
+                    _ => Palette.Scout,
+                };
+                r.transform.localScale = kind switch
+                {
+                    EnemyKind.Elite => EliteScale,
+                    EnemyKind.Splitter => SplitterScale,
+                    EnemyKind.Zapper => ZapperScale,
+                    _ => Vector3.one,
+                };
 
                 float x = swarm.X[i], y = swarm.Y[i];
                 float angle = kind == EnemyKind.Elite

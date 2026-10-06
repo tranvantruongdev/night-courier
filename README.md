@@ -7,7 +7,7 @@ fixed-gear bike, has to ride until dawn.
 > **Status (Oct 2026): week 2 of 5, in progress.** The bike, the swarm, all six weapons (Headlight, Spoke Cards,
 > Bell, Chain Whip, Tyre Spikes, Pannier Drone), six passives, XP parcels and level-up cards work in Unity 6.3
 > LTS, with a wave curve setting the swarm size, Market Street as map 1, four weapon evolutions, and elites you
-> can draft behind; Splitter and Zapper drones, the 3:00/6:00 events and the first boss come next. 93 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
+> can draft behind, plus Splitter and Zapper drones; the 3:00/6:00 events and the first boss come next. 94 EditMode tests pass, and a PlayMode smoke test rides the real game on autopilot,
 > levels up through the card popup, crashes, saves the result and runs a 300-drone stress ride. The
 > screenshots below come from that test.
 
@@ -31,7 +31,8 @@ fixed-gear bike, has to ride until dawn.
 - Turning is rate-limited (160°/s at cruise, slower at speed), and a full-rate turn lowers your speed.
 - **Speed bonus:** damage × (1 + speed/max × 0.5). Above 70% of max speed the gauge turns gold and half of
   the hits miss you.
-- Scouts are fast and weak, haulers slow and heavy. A hit costs HP and gives 0.5 s of invulnerability.
+- Scouts are fast and weak, haulers slow and heavy; from 1:30 splitters burst into two scouts, and from 2:00
+  zappers hang back and fire slow magenta orbs. A hit costs HP and gives 0.5 s of invulnerability.
 - Weapons fire on their own: the **Headlight** burns drones in a cone ahead, **Spoke Cards** orbit the bike,
   the **Bell** knocks back everything around, the **Chain Whip** lashes the side you turn toward, and
   **Tyre Spikes** leave a burning trail that lasts longer the faster you ride, and the **Pannier Drone** fires
@@ -59,7 +60,8 @@ Assets/_Project/                shared template: boot flow, saves, audio, haptic
   and 1.5 ms per 1/120 s simulation step. Phone numbers come from the Unity Profiler (dev builds have Stress
   100/300/500 buttons).
 - **Drawing:** one pooled SpriteRenderer per alive drone, positioned in a single loop; no `Update()` per drone.
-- **Deterministic:** same seed and same inputs give the same ride. An autopilot (steer toward the emptiest
+- **Deterministic:** same seed and same inputs give the same ride (within one runtime: dotnet and Unity's Mono
+  round floating-point maths differently, so a seed plays out differently between them). An autopilot (steer toward the emptiest
   of 16 directions) outlives a straight ride on every tested seed, which keeps the swarm beatable.
 
 ```bash
@@ -70,7 +72,7 @@ dotnet test Tools/CoreTests/Template.Core.Tests.csproj       # template core
 In Unity (headless, Windows):
 
 ```bash
-powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 93 EditMode tests
+powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 94 EditMode tests
 powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1 -TestPlatform PlayMode -Graphics   # smoke test + screenshots in Logs/screenshots
 ```
 

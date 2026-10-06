@@ -142,6 +142,55 @@ namespace NightCourier.Core.Tests
         }
 
         [Test]
+        public void ASplitterBurstsIntoTwoScouts()
+        {
+            var ride = new Ride(Quiet(), 1);
+            ride.Swarm.Spawn(EnemyKind.Splitter, 30f, 0f);
+            ride.Swarm.Hp[0] = 0f;
+
+            Run(ride, Dt, r => Vector2.Zero);
+
+            Assert.That(ride.Swarm.Count, Is.EqualTo(2));
+            Assert.That(ride.Swarm.Kind.Take(2), Is.All.EqualTo(EnemyKind.Scout));
+            Assert.That(ride.Kills, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void AZapperHoldsItsRangeAndItsOrbsHurt()
+        {
+            var t = Quiet();
+            t.headlightDps = 0f;
+            var ride = new Ride(t, 1);
+            ride.Swarm.Spawn(EnemyKind.Zapper, 0f, 4.5f); // ahead, inside its 5 u range: it holds still and fires
+
+            var events = Run(ride, 0.5f, r => Vector2.Zero);
+
+            Assert.That(ride.Swarm.Y[0], Is.EqualTo(4.5f).Within(1e-3f), "holding, not chasing");
+            var hit = events.Single(e => e.type == RideEventType.Hit);
+            Assert.That(hit.value, Is.EqualTo(t.orbDamage), "the orb, not a body contact");
+            Assert.That(ride.OrbLife, Has.All.LessThanOrEqualTo(0f), "the orb is spent on the hit");
+        }
+
+        [Test]
+        public void SplittersAndZappersOnlyJoinOnceTheirTimeComes()
+        {
+            int Count(RideTuning t, EnemyKind kind)
+            {
+                t.waves = WaveDirector.Flat(300);
+                var ride = new Ride(t, 7);
+                return ride.Swarm.Kind.Take(ride.Swarm.Count).Count(k => k == kind);
+            }
+
+            Assert.That(Count(RideTuning.Default(), EnemyKind.Splitter), Is.EqualTo(0), "not at 0:00");
+            Assert.That(Count(RideTuning.Default(), EnemyKind.Zapper), Is.EqualTo(0));
+
+            var early = RideTuning.Default();
+            early.splitterFrom = early.zapperFrom = 0f;
+            Assert.That(Count(early, EnemyKind.Splitter), Is.InRange(25, 65)); // 15% of 300
+            Assert.That(Count(early, EnemyKind.Zapper), Is.InRange(10, 40));   // 8% of 300
+        }
+
+        [Test]
         public void WaveCurveInterpolatesAndHoldsItsEnds()
         {
             var keys = new[] { new WaveKey(10f, 20, 0.1f), new WaveKey(20f, 40, 0.3f) };
@@ -159,7 +208,7 @@ namespace NightCourier.Core.Tests
             var t = RideTuning.Default();
             t.maxHp = 1e9f;
             t.waves = new[] { new WaveKey(0f, 0, 0f), new WaveKey(119f, 0, 0f), new WaveKey(120f, 1, 0f) }; // one scout at 2:00
-            t.firstEliteAt = float.MaxValue;
+            t.firstEliteAt = t.splitterFrom = t.zapperFrom = float.MaxValue;
             var ride = new Ride(t, 1);
             t.headlightDps = 0f;
             Run(ride, 120.5f, r => Up);

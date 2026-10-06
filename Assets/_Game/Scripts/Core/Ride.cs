@@ -42,6 +42,11 @@ namespace NightCourier.Core
         private readonly SeededRandom _rng;
         private readonly double[] _rollScratch = new double[Loadout.ItemCount];
         private float _invulnerable;
+        public const int MaxOrbs = 64;
+
+        private readonly float[] _orbVX = new float[MaxOrbs];
+        private readonly float[] _orbVY = new float[MaxOrbs];
+        private int _nextOrb;
         private float _nextElite;
         private float _draftTime;
         private float _boostLeft;
@@ -60,6 +65,11 @@ namespace NightCourier.Core
             _nextElite = tuning.firstEliteAt;
             TopUp();
         }
+
+        /// <summary>Zapper orbs in flight (a ring buffer); an orb is live while its life is above 0.</summary>
+        public float[] OrbX { get; } = new float[MaxOrbs];
+        public float[] OrbY { get; } = new float[MaxOrbs];
+        public float[] OrbLife { get; } = new float[MaxOrbs];
 
         /// <summary>The drafting speed burst is on.</summary>
         public bool Boosted => _boostLeft > 0f;
@@ -109,6 +119,8 @@ namespace NightCourier.Core
             Swarm.Step(dt, Bike.Position);
             SpawnElites();
             Draft(dt, events);
+            FireZappers(dt);
+            MoveOrbs(dt, events);
             Arsenal.Fire(dt, Bike, events);
             Reap(events);
             TopUp();
@@ -207,8 +219,16 @@ namespace NightCourier.Core
                 }
 
                 Kills++;
-                events.Add(new RideEvent { type = RideEventType.Killed, x = x, y = y, value = (float)Swarm.Kind[i] });
+                var kind = Swarm.Kind[i];
+                events.Add(new RideEvent { type = RideEventType.Killed, x = x, y = y, value = (float)kind });
                 Swarm.RemoveAt(i); // the last drone moves into i; it was already checked
+                if (kind == EnemyKind.Splitter)
+                {
+                    // Two scouts burst out; they land past the end of the list, so this loop won't reap them.
+                    float hp = WaveDirector.HpScale(Time, _t.hpPerMinute);
+                    Swarm.Spawn(EnemyKind.Scout, x - 0.35f, y, hp);
+                    Swarm.Spawn(EnemyKind.Scout, x + 0.35f, y, hp);
+                }
             }
         }
 
@@ -277,9 +297,85 @@ namespace NightCourier.Core
             while (Swarm.Count < target)
             {
                 float angle = _rng.Range(0f, 2f * MathF.PI);
-                var kind = _rng.Chance(WaveDirector.HaulerShare(_t.waves, Time)) ? EnemyKind.Hauler : EnemyKind.Scout;
                 Vector2 at = Bike.Position + Direction(angle) * _t.spawnDistance;
-                Swarm.Spawn(kind, at.X, at.Y, WaveDirector.HpScale(Time, _t.hpPerMinute));
+                int i = Swarm.Spawn(PickKind(), at.X, at.Y, WaveDirector.HpScale(Time, _t.hpPerMinute));
+                if (i >= 0)
+                {
+                    Swarm.Timer[i] = _rng.Range(0f, _t.zapperEvery); // zappers don't all fire at once
+                }
+            }
+        }
+
+        /// <summary>Zappers and splitters join the mix once their time comes; the rest is haulers and scouts by the curve.</summary>
+        private EnemyKind PickKind()
+        {
+            double roll = _rng.NextDouble();
+            if (Time >= _t.zapperFrom && roll < _t.zapperShare)
+            {
+                return EnemyKind.Zapper;
+            }
+
+            if (Time >= _t.splitterFrom && roll < _t.zapperShare + _t.splitterShare)
+            {
+                return EnemyKind.Splitter;
+            }
+
+            return _rng.Chance(WaveDirector.HaulerShare(_t.waves, Time)) ? EnemyKind.Hauler : EnemyKind.Scout;
+        }
+
+        /// <summary>Zappers in range count down and fire a slow orb at where the bike is.</summary>
+        private void FireZappers(float dt)
+        {
+            Vector2 p = Bike.Position;
+            float reach = _t.zapperRange + 0.5f;
+            for (int i = 0; i < Swarm.Count; i++)
+            {
+                if (Swarm.Kind[i] != EnemyKind.Zapper)
+                {
+                    continue;
+                }
+
+                float dx = p.X - Swarm.X[i], dy = p.Y - Swarm.Y[i];
+                float d = MathF.Sqrt(dx * dx + dy * dy);
+                if (d > reach || (Swarm.Timer[i] -= dt) > 0f)
+                {
+                    continue;
+                }
+
+                Swarm.Timer[i] = _t.zapperEvery;
+                int o = _nextOrb;
+                _nextOrb = (_nextOrb + 1) % MaxOrbs;
+                OrbX[o] = Swarm.X[i];
+                OrbY[o] = Swarm.Y[i];
+                _orbVX[o] = dx / d * _t.orbSpeed;
+                _orbVY[o] = dy / d * _t.orbSpeed;
+                OrbLife[o] = _t.orbLife;
+            }
+        }
+
+        private void MoveOrbs(float dt, List<RideEvent> events)
+        {
+            Vector2 p = Bike.Position;
+            float reach = _t.bikeRadius + _t.orbRadius;
+            for (int o = 0; o < MaxOrbs; o++)
+            {
+                if (OrbLife[o] <= 0f)
+                {
+                    continue;
+                }
+
+                OrbLife[o] -= dt;
+                OrbX[o] += _orbVX[o] * dt;
+                OrbY[o] += _orbVY[o] * dt;
+                float dx = OrbX[o] - p.X, dy = OrbY[o] - p.Y;
+                if (dx * dx + dy * dy <= reach * reach)
+                {
+                    OrbLife[o] = 0f;
+                    if (!Invulnerable)
+                    {
+                        TakeHit(_t.orbDamage, events);
+                    }
+                }
             }
         }
 
@@ -321,23 +417,29 @@ namespace NightCourier.Core
                     continue;
                 }
 
-                _invulnerable = _t.invulnerableSeconds;
-                if (Bike.CanDodge && _rng.Chance(_t.dodgeChance))
-                {
-                    events.Add(new RideEvent { type = RideEventType.Dodged, x = p.X, y = p.Y });
-                    return;
-                }
-
-                float damage = stats.contactDamage * (1f - _t.helmetArmourPerLevel * Loadout.Level(ItemKind.Helmet));
-                Hp = MathF.Max(0f, Hp - damage);
-                events.Add(new RideEvent { type = RideEventType.Hit, x = p.X, y = p.Y, value = damage });
-                if (Hp <= 0f)
-                {
-                    Over = true;
-                    events.Add(new RideEvent { type = RideEventType.Died, x = p.X, y = p.Y });
-                }
-
+                TakeHit(stats.contactDamage, events);
                 return;
+            }
+        }
+
+        /// <summary>A hit from anything: starts the invulnerability window, may be dodged at speed, armour applies.</summary>
+        private void TakeHit(float rawDamage, List<RideEvent> events)
+        {
+            Vector2 p = Bike.Position;
+            _invulnerable = _t.invulnerableSeconds;
+            if (Bike.CanDodge && _rng.Chance(_t.dodgeChance))
+            {
+                events.Add(new RideEvent { type = RideEventType.Dodged, x = p.X, y = p.Y });
+                return;
+            }
+
+            float damage = rawDamage * (1f - _t.helmetArmourPerLevel * Loadout.Level(ItemKind.Helmet));
+            Hp = MathF.Max(0f, Hp - damage);
+            events.Add(new RideEvent { type = RideEventType.Hit, x = p.X, y = p.Y, value = damage });
+            if (Hp <= 0f)
+            {
+                Over = true;
+                events.Add(new RideEvent { type = RideEventType.Died, x = p.X, y = p.Y });
             }
         }
 

@@ -192,6 +192,7 @@ namespace NightCourier
             _bikeView.Sync(bike, _ride.Invulnerable, _ride.Boosted, Time.deltaTime);
             _swarmView.Sync(_ride.Swarm, new Vector2(bike.Position.X, bike.Position.Y));
             _weaponsView.Sync(_ride, Time.deltaTime);
+            _swarmView.SyncOrbs(_ride);
             _hud.SetTime(_ride.Time);
             _hud.SetLevel(_ride.Level, _ride.Xp / (float)_ride.XpNeeded);
             _hud.SetHp(_ride.Hp / _ride.Tuning.maxHp);

@@ -48,6 +48,9 @@ namespace NightCourier.PlayModeTests
             Assert.GreaterOrEqual(ride.Swarm.Count, 30, "drones keep spawning");
             var ahead = ride.Bike.Position + ride.Bike.Forward * 3.5f; // an elite in the shot (they come every minute)
             ride.Swarm.Spawn(NightCourier.Core.EnemyKind.Elite, ahead.X, ahead.Y, 1f, ride.Bike.Heading);
+            var side = ride.Bike.Position + new System.Numerics.Vector2(-ride.Bike.Forward.Y, ride.Bike.Forward.X) * 4f;
+            ride.Swarm.Spawn(NightCourier.Core.EnemyKind.Zapper, side.X, side.Y); // in range: an orb is in the air by the shot
+            ride.Swarm.Spawn(NightCourier.Core.EnemyKind.Splitter, side.X + 1.5f, side.Y + 1.5f);
             yield return new WaitForSeconds(0.3f);
             Capture("2-riding");
 

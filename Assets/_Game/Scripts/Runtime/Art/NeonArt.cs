@@ -16,6 +16,11 @@ namespace NightCourier.Art
         public static readonly Color Hurt = Hex(0xFF2D55);
         public static readonly Color Parcel = Hex(0x7CFFB2);
         public static readonly Color Elite = Hex(0xFFF1C2);
+        public static readonly Color Splitter = Hex(0xFF9A3C);
+        public static readonly Color Zapper = Hex(0x9BFF4E);
+
+        /// <summary>Enemy shots only: nothing else in the game is magenta.</summary>
+        public static readonly Color Orb = Hex(0xFF3EF0);
 
         public static Color Hex(int rgb, float alpha = 1f) =>
             new Color(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, alpha);

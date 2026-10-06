@@ -57,6 +57,21 @@ namespace NightCourier.Core
         public EnemyStats scout = new EnemyStats { speed = 2.8f, hp = 6f, contactDamage = 6f, radius = 0.3f };
         public EnemyStats hauler = new EnemyStats { speed = 1.3f, hp = 30f, contactDamage = 14f, radius = 0.55f };
         public EnemyStats elite = new EnemyStats { speed = 3.2f, hp = 120f, contactDamage = 20f, radius = 0.7f };
+        public EnemyStats splitter = new EnemyStats { speed = 2.2f, hp = 18f, contactDamage = 8f, radius = 0.4f };
+        public EnemyStats zapper = new EnemyStats { speed = 2f, hp = 14f, contactDamage = 6f, radius = 0.35f };
+
+        // Splitters from 1:30, zappers from 2:00, each a share of new spawns. Zappers stop at zapperRange and fire an
+        // orb every zapperEvery seconds.
+        public float splitterFrom = 90f;
+        public float splitterShare = 0.15f;
+        public float zapperFrom = 120f;
+        public float zapperShare = 0.08f;
+        public float zapperRange = 5f;
+        public float zapperEvery = 2.5f;
+        public float orbSpeed = 4f;
+        public float orbDamage = 8f;
+        public float orbLife = 3f;
+        public float orbRadius = 0.2f;
 
         // Elites and drafting: an elite every minute from 1:00; riding within draftRange behind one (and within
         // draftLateral of its line) for draftSeconds gives +draftBoost speed for draftBoostSeconds.
@@ -151,6 +166,8 @@ namespace NightCourier.Core
         {
             EnemyKind.Hauler => hauler,
             EnemyKind.Elite => elite,
+            EnemyKind.Splitter => splitter,
+            EnemyKind.Zapper => zapper,
             _ => scout,
         };
 

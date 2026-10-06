@@ -396,33 +396,46 @@ namespace NightCourier.Core.Tests
         }
 
         /// <summary>
-        /// Pacing guard. The plan wants the first level-up around 20 s for a player; this bot never aims the
-        /// headlight, so it gets 15–40 s. Tighten the bound when the wave director shapes the early density.
+        /// Pacing guard. The plan wants the first level-up around 20 s for a player; one seed's spawn layout
+        /// swings this bot (which never aims) by tens of seconds, so the guard is the median over seven seeds.
+        /// Medians also because a seed's ride differs between dotnet and Unity's Mono (their float maths differ,
+        /// and 120 s of simulation amplifies it): rides are deterministic within one runtime, not across them.
         /// </summary>
         [Test]
-        public void TheBotLevelsUpEarlyAndKeepsLevelling([Values(1UL, 3UL, 5UL)] ulong seed)
+        public void TheBotLevelsUpEarlyAndKeepsLevelling()
         {
-            var ride = new Ride(RideTuning.Default(), seed);
-            var events = new List<RideEvent>();
-            float firstLevelUp = float.NaN;
-            while (!ride.Over && ride.Time < 120f)
+            var firsts = new List<float>();
+            var levels = new List<int>();
+            foreach (ulong seed in new ulong[] { 1, 2, 3, 4, 5, 6, 7 })
             {
-                events.Clear();
-                ride.Step(Dt, RideBot.Steer(ride), events);
-                if (float.IsNaN(firstLevelUp) && events.Any(e => e.type == RideEventType.LevelUp))
+                var ride = new Ride(RideTuning.Default(), seed);
+                var events = new List<RideEvent>();
+                float firstLevelUp = 999f;
+                while (!ride.Over && ride.Time < 120f)
                 {
-                    firstLevelUp = ride.Time;
+                    events.Clear();
+                    ride.Step(Dt, RideBot.Steer(ride), events);
+                    if (firstLevelUp > 998f && events.Any(e => e.type == RideEventType.LevelUp))
+                    {
+                        firstLevelUp = ride.Time;
+                    }
+
+                    while (ride.PendingLevelUps > 0)
+                    {
+                        ride.Choose(0);
+                    }
                 }
 
-                while (ride.PendingLevelUps > 0)
-                {
-                    ride.Choose(0);
-                }
+                TestContext.WriteLine($"seed {seed}: first level-up at {firstLevelUp:0.0} s; level {ride.Level} after {ride.Time:0} s, {ride.Kills} kills");
+                firsts.Add(firstLevelUp);
+                levels.Add(ride.Level);
             }
 
-            TestContext.WriteLine($"seed {seed}: first level-up at {firstLevelUp:0.0} s; level {ride.Level} after {ride.Time:0} s, {ride.Kills} kills");
-            Assert.That(firstLevelUp, Is.LessThanOrEqualTo(45f));
-            Assert.That(ride.Level, Is.GreaterThanOrEqualTo(4));
+            firsts.Sort();
+            levels.Sort();
+            TestContext.WriteLine($"median first level-up: {firsts[3]:0.0} s, median level after 2 min: {levels[3]}");
+            Assert.That(firsts[3], Is.LessThanOrEqualTo(35f));
+            Assert.That(levels[3], Is.GreaterThanOrEqualTo(4));
         }
     }
 }
