@@ -93,6 +93,41 @@ namespace NightCourier.Core.Tests
         }
 
         [Test]
+        public void BikesAreBoughtOnceThenRiddenFreely()
+        {
+            var data = new GarageData { coins = 350 };
+            Assert.That(data.Owns(BikeModel.Fixie), Is.True);
+            Assert.That(Garage.SelectBike(data, BikeModel.Racer), Is.True);
+            Assert.That(data.coins, Is.EqualTo(50));
+            Assert.That(Garage.SelectBike(data, BikeModel.Cargo), Is.False, "can't afford the second");
+            Assert.That(data.bike, Is.EqualTo(BikeModel.Racer));
+
+            Assert.That(Garage.SelectBike(data, BikeModel.Fixie), Is.True);
+            Assert.That(Garage.SelectBike(data, BikeModel.Racer), Is.True, "owned: free");
+            Assert.That(data.coins, Is.EqualTo(50));
+        }
+
+        [Test]
+        public void EachBikeRidesDifferently()
+        {
+            RideTuning With(BikeModel model)
+            {
+                var t = RideTuning.Default();
+                Garage.Apply(new GarageData { bike = model, ownedBikes = 7 }, t);
+                return t;
+            }
+
+            var fixie = With(BikeModel.Fixie);
+            var racer = With(BikeModel.Racer);
+            var cargo = With(BikeModel.Cargo);
+            Assert.That(racer.maxSpeed, Is.GreaterThan(fixie.maxSpeed));
+            Assert.That(racer.maxHp, Is.LessThan(fixie.maxHp));
+            Assert.That(cargo.maxHp, Is.GreaterThan(fixie.maxHp));
+            Assert.That(cargo.turnRateAtCruise, Is.LessThan(fixie.turnRateAtCruise));
+            Assert.That(racer.cruiseSpeed, Is.LessThan(racer.maxSpeed), "cruise stays under top speed");
+        }
+
+        [Test]
         public void ARerollSwapsTheCardsOnce()
         {
             var t = RideTests.Quiet();

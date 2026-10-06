@@ -11,14 +11,27 @@ namespace NightCourier.Core
         Reroll,
     }
 
+    /// <summary>Kai's bikes: the fixie everyone starts with, a fast fragile racer, a tanky cargo bike.</summary>
+    public enum BikeModel
+    {
+        Fixie,
+        Racer,
+        Cargo,
+    }
+
     /// <summary>What the garage keeps between rides (saved through SaveData.SetGame).</summary>
     [Serializable]
     public sealed class GarageData
     {
         public int coins;
         public int[] levels = new int[Garage.UpgradeCount];
+        public BikeModel bike;
+
+        /// <summary>Bit per <see cref="BikeModel"/>; the fixie is always owned.</summary>
+        public int ownedBikes = 1;
 
         public int Level(GarageUpgrade upgrade) => levels != null && (int)upgrade < levels.Length ? levels[(int)upgrade] : 0;
+        public bool Owns(BikeModel model) => model == BikeModel.Fixie || (ownedBikes & (1 << (int)model)) != 0;
     }
 
     /// <summary>Prices, coin rewards, and how bought upgrades change a ride.</summary>
@@ -52,6 +65,26 @@ namespace NightCourier.Core
             return true;
         }
 
+        public const int BikeCost = 300;
+
+        /// <summary>Rides an owned bike, or buys and rides one you can afford. False when neither.</summary>
+        public static bool SelectBike(GarageData data, BikeModel model)
+        {
+            if (!data.Owns(model))
+            {
+                if (data.coins < BikeCost)
+                {
+                    return false;
+                }
+
+                data.coins -= BikeCost;
+                data.ownedBikes |= 1 << (int)model;
+            }
+
+            data.bike = model;
+            return true;
+        }
+
         /// <summary>A coin per 5 kills and per 10 seconds ridden, plus 100 for beating the boss.</summary>
         public static int CoinsFor(Ride ride) => ride.Kills / 5 + (int)(ride.Time / 10f) + (ride.Won ? 100 : 0);
 
@@ -62,6 +95,20 @@ namespace NightCourier.Core
             tuning.xpGain *= 1f + 0.1f * data.Level(GarageUpgrade.XpGain);
             tuning.cruiseSpeed += 0.2f * data.Level(GarageUpgrade.StartSpeed);
             tuning.rerolls += data.Level(GarageUpgrade.Reroll);
+
+            switch (data.bike)
+            {
+                case BikeModel.Racer: // faster, fragile
+                    tuning.maxSpeed *= 1.15f;
+                    tuning.cruiseSpeed *= 1.1f;
+                    tuning.maxHp *= 0.7f;
+                    break;
+                case BikeModel.Cargo: // tanky, slower turns
+                    tuning.maxHp *= 1.4f;
+                    tuning.turnRateAtCruise *= 0.75f;
+                    tuning.maxSpeed *= 0.92f;
+                    break;
+            }
         }
     }
 }

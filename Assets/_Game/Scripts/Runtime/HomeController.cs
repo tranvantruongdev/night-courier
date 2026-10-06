@@ -27,6 +27,9 @@ namespace NightCourier
         private TextMeshProUGUI _coins;
         private readonly TextMeshProUGUI[] _rowLabels = new TextMeshProUGUI[4];
         private readonly Button[] _rowButtons = new Button[4];
+        private static readonly BikeModel[] Bikes = { BikeModel.Fixie, BikeModel.Racer, BikeModel.Cargo };
+        private readonly Button[] _bikeButtons = new Button[3];
+        private TextMeshProUGUI _bikeLabel;
 
         private void Start()
         {
@@ -72,7 +75,7 @@ namespace NightCourier
             for (int i = 0; i < Upgrades.Length; i++)
             {
                 int index = i;
-                float y = 270f - i * 170f;
+                float y = 330f - i * 150f;
                 _rowLabels[i] = UiFactory.CreateText(card, "", 40, new Vector2(-170f, y), new Vector2(480f, 140f), TextAlignmentOptions.Left);
                 _rowLabels[i].color = UiFactory.Ink;
                 _rowButtons[i] = UiFactory.CreateButton(card, "Buy", new Vector2(260f, y), new Vector2(260f, 120f), () => Buy(Upgrades[index]));
@@ -80,7 +83,18 @@ namespace NightCourier
                 _rowButtons[i].gameObject.AddComponent<CanvasGroup>();
             }
 
-            UiFactory.CreateButton(card, "Close", new Vector2(0f, -440f), new Vector2(460f, 140f), () => _garage.SetActive(false), ButtonStyle.Secondary);
+            _bikeLabel = UiFactory.CreateText(card, "", 40, new Vector2(0f, -230f), new Vector2(820f, 70f));
+            _bikeLabel.color = UiFactory.Ink;
+            for (int i = 0; i < Bikes.Length; i++)
+            {
+                var model = Bikes[i];
+                _bikeButtons[i] = UiFactory.CreateButton(card, model.ToString(), new Vector2(-270f + i * 270f, -320f), new Vector2(250f, 110f),
+                    () => PickBike(model), ButtonStyle.Secondary);
+                _bikeButtons[i].name = "Bike " + model;
+                _bikeButtons[i].gameObject.AddComponent<CanvasGroup>();
+            }
+
+            UiFactory.CreateButton(card, "Close", new Vector2(0f, -465f), new Vector2(460f, 120f), () => _garage.SetActive(false), ButtonStyle.Secondary);
             _garage = root.gameObject;
             _garage.SetActive(false);
         }
@@ -92,6 +106,27 @@ namespace NightCourier
             GarageUpgrade.StartSpeed => "Better gears: +0.2 cruise",
             _ => "Spare map: 1 card reroll a ride",
         };
+
+        private static string BikeLine(BikeModel model) => model switch
+        {
+            BikeModel.Racer => "Racer: faster, fragile",
+            BikeModel.Cargo => "Cargo: tanky, slow to turn",
+            _ => "Fixie: balanced",
+        };
+
+        private void PickBike(BikeModel model)
+        {
+            var save = Services.Get<SaveService>();
+            var data = save.Data.GetGame<GarageData>();
+            if (Garage.SelectBike(data, model))
+            {
+                save.Data.SetGame(data);
+                save.MarkDirty();
+                save.Save();
+            }
+
+            Refresh();
+        }
 
         private void OpenGarage()
         {
@@ -118,6 +153,15 @@ namespace NightCourier
         {
             var data = Services.Get<SaveService>().Data.GetGame<GarageData>();
             _coins.text = $"{data.coins} {UiFactory.Localize("coins")}";
+            _bikeLabel.text = UiFactory.Localize(BikeLine(data.bike));
+            for (int i = 0; i < Bikes.Length; i++)
+            {
+                var model = Bikes[i];
+                bool owned = data.Owns(model);
+                _bikeButtons[i].GetComponentInChildren<TextMeshProUGUI>().text =
+                    owned ? UiFactory.Localize(model.ToString()) : $"{UiFactory.Localize(model.ToString())} {Garage.BikeCost}";
+                _bikeButtons[i].GetComponent<CanvasGroup>().alpha = model == data.bike ? 1f : owned || data.coins >= Garage.BikeCost ? 0.7f : 0.4f;
+            }
             for (int i = 0; i < Upgrades.Length; i++)
             {
                 var upgrade = Upgrades[i];
