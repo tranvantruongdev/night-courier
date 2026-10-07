@@ -4,13 +4,13 @@
 Neon Ward glitched, and now the Swarm chases anything that stops moving. Kai, a night-shift courier on a
 fixed-gear bike, has to ride until dawn.
 
-> **Status (Oct 2026): week 4 of 5, in progress.** A full 10-minute shift plays in Unity 6.3 LTS on map 1
-> (Market Street): six weapons and six passives with four evolutions, level-up cards, a wave curve, elites to
-> draft behind, Splitter and Zapper drones, scripted events at 3:00 / 6:00 / 8:30, and the Dispatcher boss at
-> 10:00, whose defeat wins the shift. Between shifts, coins buy permanent upgrades in the Garage. Codex, extra
-> bikes and map 2 come next. 103 EditMode tests pass, and a PlayMode smoke test plays the real game on
-> autopilot: garage, ride, level-up, crash, results, a 300-drone stress ride and the boss. The screenshots below
-> come from that test.
+> **Status (Oct 2026): feature-complete, release pending.** A full 10-minute shift plays in Unity 6.3 LTS on two
+> maps (Market Street, Harbor Ring), each ending in a boss whose defeat wins the shift: six weapons and six
+> passives with four evolutions, level-up cards, elites to draft behind, Splitter and Zapper drones and scripted
+> events. Between shifts, coins buy upgrades and bikes in the Garage, and a Codex fills in as you find things.
+> English, Vietnamese and Japanese. 111 EditMode tests and 78 dotnet tests pass, and a PlayMode smoke test plays
+> the real game on autopilot (garage, ride, level-up, crash, results, a 300-drone stress ride and the boss);
+> the screenshots below come from it. CI builds a signed Android APK/AAB and a Windows zip; no public build yet.
 
 <p>
   <img src="docs/night-courier.gif" width="270" alt="A full build shredding the swarm on Harbor Ring behind a white elite, then the yellow Freight Hauler charging">
@@ -29,7 +29,7 @@ fixed-gear bike, has to ride until dawn.
 | **My role** | Solo: design, code, tuning. Art and sound are generated in code for now |
 | **Engine** | Unity 6.3 LTS (URP 2D), C#. Built from [unity-mobile-template](https://github.com/tranvantruongdev/unity-mobile-template) |
 
-## How it plays (so far)
+## How it plays
 
 - **Drag anywhere** to steer: the joystick appears under your thumb. A light push cruises at 4 u/s, a full
   push reaches 6 u/s. Pull back to brake while the bike swings round; speed never drops below 1.5 u/s.
@@ -45,6 +45,9 @@ fixed-gear bike, has to ride until dawn.
   cards (items you own come up more often).
 - **Drafting:** from 1:00, an elite cruises across your path every minute. Tuck in right behind it for 1.5 s
   and you get +30% speed for 2 s.
+- **Bosses at 10:00:** the Dispatcher on Market Street fans out orbs; the Freight Hauler on Harbor Ring charges
+  in straight lines, and its slipstream drafts like an elite's. Beat Market Street to open Harbor Ring.
+- **Garage:** coins from each shift buy upgrades and two more bikes (Racer: faster, Cargo: tougher).
 
 ## How it's built
 
@@ -77,7 +80,7 @@ dotnet test Tools/CoreTests/Template.Core.Tests.csproj       # template core
 In Unity (headless, Windows):
 
 ```bash
-powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 103 EditMode tests
+powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1                                    # 111 EditMode tests
 powershell -ExecutionPolicy Bypass -File Tools/run-unity-tests.ps1 -TestPlatform PlayMode -Graphics   # smoke test + screenshots in Logs/screenshots
 ```
 
