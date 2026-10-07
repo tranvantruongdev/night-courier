@@ -298,11 +298,35 @@ namespace NightCourier.PlayModeTests
                 lines.Add(NightCourier.UI.ItemText.Line(item));
             }
 
-            foreach (var text in lines)
+            // Weapon names on the results chart, plain and evolved.
+            var chartName = ((TMPro.TMP_Text[])hud.GetType().GetField("_chartNames", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(hud))[0];
+            var names = new System.Collections.Generic.List<string>();
+            for (var item = NightCourier.Core.ItemKind.Headlight; item <= NightCourier.Core.ItemKind.PannierDrone; item++)
             {
-                line.text = Template.UI.UiFactory.Localize(text);
-                line.ForceMeshUpdate();
-                Assert.AreEqual(1, line.textInfo.lineCount, $"one line in Japanese: {line.text}");
+                names.Add(NightCourier.UI.ItemText.Name(item));
+                names.Add(NightCourier.UI.ItemText.EvolvedName(item));
+            }
+
+            foreach (var code in new[] { "ja", "vi" })
+            {
+                settingsService.Current.language = code;
+                foreach (var text in lines)
+                {
+                    line.text = Template.UI.UiFactory.Localize(text);
+                    line.ForceMeshUpdate();
+                    Assert.AreEqual(1, line.textInfo.lineCount, $"one line in {code}: {line.text}");
+                }
+
+                // The results panel is hidden, so no mesh: measure the width at the smallest auto-size instead.
+                chartName.fontSize = chartName.fontSizeMin;
+                foreach (var text in names)
+                {
+                    string localized = Template.UI.UiFactory.Localize(text);
+                    float width = chartName.GetPreferredValues(localized).x;
+                    Assert.Greater(width, 0f, "measured, not an empty layout");
+                    Assert.LessOrEqual(width, chartName.rectTransform.rect.width,
+                        $"chart name fits in {code}: {localized}");
+                }
             }
 
             FirstCard().onClick.Invoke();
