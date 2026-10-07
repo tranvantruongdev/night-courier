@@ -111,10 +111,14 @@ namespace NightCourier.UI
             {
                 // Damage per weapon: name, bar scaled to the top weapon, number.
                 float y = 105f - i * 36f;
-                hud._chartNames[i] = UiFactory.CreateText(resultsCard, "", 28, new Vector2(-250f, y), new Vector2(220f, 34f), TextAlignmentOptions.Right);
+                hud._chartNames[i] = UiFactory.CreateText(resultsCard, "", 32, new Vector2(-250f, y), new Vector2(220f, 36f), TextAlignmentOptions.Right);
                 hud._chartNames[i].color = UiFactory.Ink;
+                // Readable on a small phone, but long names (Vietnamese, Japanese) shrink to stay on one line.
+                hud._chartNames[i].enableAutoSizing = true;
+                hud._chartNames[i].fontSizeMin = 24f;
+                hud._chartNames[i].fontSizeMax = 32f;
                 hud._chartBars[i] = Bar(resultsCard, new Vector2(0.5f, 0.5f), new Vector2(-125f, y), ChartWidth, 20f, Palette.Bonus).rectTransform;
-                hud._chartValues[i] = UiFactory.CreateText(resultsCard, "", 26, new Vector2(345f, y), new Vector2(120f, 34f), TextAlignmentOptions.Left); // starts past the bar end (275)
+                hud._chartValues[i] = UiFactory.CreateText(resultsCard, "", 30, new Vector2(345f, y), new Vector2(120f, 36f), TextAlignmentOptions.Left); // starts past the bar end (275)
                 hud._chartValues[i].color = UiFactory.Muted;
             }
 
