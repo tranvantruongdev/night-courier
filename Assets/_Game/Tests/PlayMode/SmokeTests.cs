@@ -72,6 +72,12 @@ namespace NightCourier.PlayModeTests
             ClickButton("Button Close");
             yield return new WaitForSecondsRealtime(0.2f);
 
+            // A first ride on Market Street (the save keeps earlier runs), so the first-run tips show.
+            var firstSave = Services.Get<SaveService>();
+            var firstGarage = firstSave.Data.GetGame<NightCourier.Core.GarageData>();
+            firstGarage.rodeOnce = false;
+            firstGarage.map = NightCourier.Core.MapKind.MarketStreet;
+            firstSave.Data.SetGame(firstGarage);
             RideController.Autopilot = true;
             Services.Get<GameFlow>().GoToAsync(AppState.Game).Forget();
             yield return WaitForScene("Game", 20f);
