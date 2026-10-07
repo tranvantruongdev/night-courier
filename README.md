@@ -13,10 +13,13 @@ fixed-gear bike, has to ride until dawn.
 > come from that test.
 
 <p>
+  <img src="docs/night-courier.gif" width="270" alt="A full build shredding the swarm on Harbor Ring behind a white elite, then the yellow Freight Hauler charging">
   <img src="docs/screenshots/riding.png" width="270" alt="Market Street at night: the bike's headlight on a big white elite drone ahead, an orange splitter and a magenta orb nearby">
-  <img src="docs/screenshots/harbor-boss.png" width="270" alt="Harbor Ring: shipping containers and quay lanes, 300 drones swarming the bike, the yellow Freight Hauler boss at the edge">
   <img src="docs/screenshots/level-up.png" width="270" alt="Level up: three cards, Headlight level 1 to 2, Gear Ratio new, Bell new">
 </p>
+
+*The GIF and screenshots are recorded by PlayMode tests (`TrailerCapture`, `SmokeTests`). The 19-second
+[trailer](docs/night-courier-trailer.mp4) comes from the same capture (`Tools/make-trailer.ps1`).*
 
 | | |
 |---|---|

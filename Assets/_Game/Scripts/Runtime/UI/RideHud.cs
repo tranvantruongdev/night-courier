@@ -106,6 +106,7 @@ namespace NightCourier.UI
             Button(hud._results.transform, "Home", -220f, () => hud.HomePressed?.Invoke(), ButtonStyle.Secondary);
             var resultsCard = hud._results.transform.Find("Card");
             hud._resultsBody.rectTransform.anchoredPosition = new Vector2(0f, 200f);
+            hud._resultsBody.fontSize = 38; // "Survived 9:59 · 597 kills · Lv 11" must stay on one line above the chart
             for (int i = 0; i < ChartRows; i++)
             {
                 // Damage per weapon: name, bar scaled to the top weapon, number.
