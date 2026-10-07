@@ -84,3 +84,5 @@ Release setup (signing keystore, Unity login and itch.io secrets for CI) is the 
 
 Built with AI assistance (Claude Code). I designed the systems, reviewed and tested all code.
 Libraries: UniTask (MIT), PrimeTween, Newtonsoft JSON (MIT). Template code: MIT (see `LICENSE`).
+Font: [M PLUS Rounded 1c](https://fonts.google.com/specimen/M+PLUS+Rounded+1c) for Japanese (SIL Open Font License,
+see `Assets/_Game/Fonts/OFL-MPLUSRounded1c.txt`). Texts in English, Vietnamese and Japanese (`strings.csv`).
