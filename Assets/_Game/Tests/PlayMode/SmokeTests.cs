@@ -101,6 +101,17 @@ namespace NightCourier.PlayModeTests
 
             // A level-up: a level's worth of XP under the wheels, the cards come up, the first one is tapped.
             RideController.Autopilot = false;
+            // A maxed headlight with Gear Ratio: the cards should include High Beam's EVOLVE card (weighted 50).
+            for (int i = ride.Loadout.Level(NightCourier.Core.ItemKind.Headlight); i < NightCourier.Core.Loadout.MaxLevel; i++)
+            {
+                ride.Loadout.Upgrade(NightCourier.Core.ItemKind.Headlight);
+            }
+
+            if (!ride.Loadout.Owns(NightCourier.Core.ItemKind.GearRatio))
+            {
+                ride.Loadout.Upgrade(NightCourier.Core.ItemKind.GearRatio);
+            }
+
             ride.Parcels.Add(ride.Bike.Position.X, ride.Bike.Position.Y, ride.XpNeeded);
             float waitedForCards = 0f;
             while (ride.PendingLevelUps == 0 && waitedForCards < 2f)
@@ -119,13 +130,31 @@ namespace NightCourier.PlayModeTests
             Assert.IsNotNull(card, "the level-up cards are on screen");
             Assert.AreEqual(frozenAt, ride.Time, "the ride waits for a card");
             card.onClick.Invoke();
-            Assert.AreEqual(levelBefore + 1, ride.Loadout.Level(picked));
+            if (picked == NightCourier.Core.ItemKind.Headlight)
+            {
+                Assert.IsTrue(ride.Loadout.Evolved(picked), "the EVOLVE card evolves instead of levelling");
+            }
+            else
+            {
+                Assert.AreEqual(levelBefore + 1, ride.Loadout.Level(picked));
+            }
             yield return new WaitForSeconds(0.3f);
             Assert.Greater(ride.Time, frozenAt, "the ride carries on after the pick");
 
             // Let go of the stick: riding straight into the swarm ends the shift. Fast-forward to get there.
             RideController.Autopilot = false;
             Time.timeScale = 4f;
+            // The High Beam above makes this build too strong to die on its own in time: a ring of unkillable haulers
+            // around the bike ends the shift.
+            for (int k = 0; k < 24; k++)
+            {
+                float a = k * Mathf.PI * 2f / 24f;
+                int h = ride.Swarm.Spawn(NightCourier.Core.EnemyKind.Hauler, ride.Bike.Position.X + Mathf.Cos(a) * 1.2f, ride.Bike.Position.Y + Mathf.Sin(a) * 1.2f);
+                if (h >= 0)
+                {
+                    ride.Swarm.Hp[h] = 1e6f;
+                }
+            }
             float waited = 0f;
             while (!controller.IsOver && waited < 30f)
             {
@@ -200,6 +229,18 @@ namespace NightCourier.PlayModeTests
             yield return WaitForScene("Title", 20f);
             yield return new WaitForSeconds(0.6f);
             Capture("7-title-after-ride");
+
+            // Left-handed: the HUD mirrors its corners (speed gauge bottom-right, pause top-left). Restored after.
+            var controlsSave = Services.Get<SaveService>();
+            var controls = controlsSave.Data.GetGame<NightCourier.Core.GarageData>();
+            controls.leftHanded = true;
+            controlsSave.Data.SetGame(controls);
+            yield return Services.Get<GameFlow>().GoToAsync(AppState.Game).ToCoroutine();
+            yield return new WaitForSeconds(0.5f);
+            Capture("8-left-handed");
+            controls.leftHanded = false;
+            controlsSave.Data.SetGame(controls);
+            yield return Services.Get<GameFlow>().GoToAsync(AppState.Title).ToCoroutine();
         }
 
         private static void ClickButton(string name)
