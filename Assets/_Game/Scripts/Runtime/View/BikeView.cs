@@ -15,6 +15,7 @@ namespace NightCourier.View
 
         private readonly SpriteRenderer _bike;
         private readonly SpriteRenderer _halo;
+        private readonly SpriteRenderer _outline;
         private readonly SpriteRenderer[] _trail = new SpriteRenderer[TrailLength];
         private int _nextTrail;
         private float _trailTimer;
@@ -23,8 +24,12 @@ namespace NightCourier.View
         {
             var root = new GameObject("Bike").transform;
             root.SetParent(parent, false);
-            _halo = Renderer(root, "Halo", NeonArt.Dot, 9);
+            _halo = Renderer(root, "Halo", NeonArt.Dot, 8);
             _halo.transform.localScale = Vector3.one * 1.8f;
+            // A dark silhouette just under the body keeps the bike readable over bright drones and its own glow.
+            _outline = Renderer(root, "Outline", NeonArt.Bike, 9);
+            _outline.color = new Color(0.02f, 0.03f, 0.08f, 0.9f);
+            _outline.transform.localScale = Vector3.one * 1.3f;
             _bike = Renderer(root, "Body", NeonArt.Bike, 10);
             _bike.color = Palette.Bike;
             for (int i = 0; i < TrailLength; i++)
@@ -40,6 +45,7 @@ namespace NightCourier.View
         {
             var position = new Vector3(bike.Position.X, bike.Position.Y, 0f);
             _bike.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, 0f, bike.Heading * Mathf.Rad2Deg));
+            _outline.transform.SetPositionAndRotation(position, _bike.transform.rotation);
             _halo.transform.position = position;
 
             bool blink = invulnerable && Mathf.Repeat(Time.time * 16f, 2f) < 1f;
