@@ -147,6 +147,13 @@ namespace NightCourier.PlayModeTests
             yield return new WaitForSeconds(0.3f);
             Assert.Greater(ride.Time, frozenAt, "the ride carries on after the pick");
 
+            // The 1:00 elite brought forward: on a first ride its arrival shows the drafting tip.
+            var nextElite = typeof(NightCourier.Core.Ride).GetField("_nextElite", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(nextElite, "Ride._nextElite not found");
+            nextElite.SetValue(ride, ride.Time);
+            yield return new WaitForSeconds(0.6f);
+            Capture("4b-draft-tip");
+
             // Let go of the stick: riding straight into the swarm ends the shift. Fast-forward to get there.
             RideController.Autopilot = false;
             Time.timeScale = 4f;
