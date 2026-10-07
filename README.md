@@ -13,8 +13,8 @@ fixed-gear bike, has to ride until dawn.
 > come from that test.
 
 <p>
-  <img src="docs/screenshots/riding.png" width="270" alt="The cyan bike rides through Market Street at full speed, headlight on, past stalls with striped awnings and lantern strings; red diamond drones close in">
-  <img src="docs/screenshots/stress-300.png" width="270" alt="Stress ride: 300 drones circle the bike">
+  <img src="docs/screenshots/riding.png" width="270" alt="Market Street at night: the bike's headlight on a big white elite drone ahead, an orange splitter and a magenta orb nearby">
+  <img src="docs/screenshots/harbor-boss.png" width="270" alt="Harbor Ring: shipping containers and quay lanes, 300 drones swarming the bike, the yellow Freight Hauler boss at the edge">
   <img src="docs/screenshots/level-up.png" width="270" alt="Level up: three cards, Headlight level 1 to 2, Gear Ratio new, Bell new">
 </p>
 
