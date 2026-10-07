@@ -255,6 +255,18 @@ namespace NightCourier
                 case RideEventType.Killed:
                     _audio.PlaySfx(_killSound, 0.5f, UnityEngine.Random.Range(0.85f, 1.2f));
                     _swarmView.Pop(new Vector2(e.x, e.y), (EnemyKind)(int)e.value);
+                    if ((EnemyKind)(int)e.value == EnemyKind.Elite || Swarm.IsBoss((EnemyKind)(int)e.value))
+                    {
+                        // A big one down: a heavy buzz and a shake, and for an elite a beat of hit-stop. Not for a boss:
+                        // its kill wins the shift, whose slow motion a hit-stop would cut short when it restores time.
+                        if ((EnemyKind)(int)e.value == EnemyKind.Elite)
+                        {
+                            JuiceFx.HitStop(0.08f).Forget();
+                        }
+
+                        Haptics.Heavy();
+                        JuiceFx.Shake(_camera.transform, 0.3f, 0.3f);
+                    }
                     break;
                 case RideEventType.Collected:
                     _audio.PlaySfx(_collectSound, 0.35f, UnityEngine.Random.Range(0.95f, 1.1f));
