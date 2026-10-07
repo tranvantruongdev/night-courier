@@ -210,7 +210,21 @@ namespace NightCourier.PlayModeTests
             var front = boss.Bike.Position + boss.Bike.Forward * 6f;
             int b = boss.Swarm.Spawn(NightCourier.Core.EnemyKind.Freight, front.X, front.Y);
             boss.Swarm.Hp[b] = 1e6f;
-            yield return new WaitForSeconds(1.8f);
+            // Shot mid-charge (Timer > 0), the moment its slipstream drafts. Indices move as drones die, so find it each frame.
+            bool charging = false;
+            float waitedForCharge = 0f;
+            while (!charging && waitedForCharge < 5f)
+            {
+                waitedForCharge += Time.deltaTime;
+                yield return null;
+                for (int i = 0; i < boss.Swarm.Count; i++)
+                {
+                    charging |= boss.Swarm.Kind[i] == NightCourier.Core.EnemyKind.Freight && boss.Swarm.Timer[i] > 0f;
+                }
+            }
+
+            Assert.IsTrue(charging, "the Freight Hauler charges within 5 s");
+            yield return new WaitForSeconds(0.25f);
             Capture("6b-boss");
             for (int i = 0; i < boss.Swarm.Count; i++)
             {
