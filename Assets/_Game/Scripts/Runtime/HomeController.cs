@@ -39,6 +39,7 @@ namespace NightCourier
         private Slider _opacitySlider;
         private Toggle _leftHanded;
         private bool _loadingControls;
+        private string _languageAtOpen;
         private Button _harborButton;
         private TextMeshProUGUI _harborNote;
 
@@ -326,6 +327,7 @@ namespace NightCourier
         private async UniTaskVoid OpenSettings()
         {
             var settings = Services.Get<SettingsService>();
+            _languageAtOpen = settings.Current.language;
             _settingsPresenter = new SettingsPresenter(settings.Current);
             _settingsPresenter.SettingsChanged += _ => settings.Apply();
             _settingsPresenter.Attach(_settingsView);
@@ -336,8 +338,14 @@ namespace NightCourier
         {
             _settingsPresenter?.Dispose();
             _settingsPresenter = null;
-            Services.Get<SettingsService>().Commit();
+            var settings = Services.Get<SettingsService>();
+            settings.Commit();
             await _stack.PopAsync();
+            if (settings.Current.language != _languageAtOpen)
+            {
+                // Labels are translated when built: rebuild Home in the new language (Title → Title is allowed).
+                Services.Get<GameFlow>().GoToAsync(AppState.Title).Forget();
+            }
         }
 
         private void OnDestroy()

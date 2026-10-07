@@ -35,6 +35,21 @@ namespace NightCourier.PlayModeTests
             yield return new WaitForSeconds(0.6f);
             Capture("1-title");
 
+            // Home in Japanese and Vietnamese (rebuilt per language), then back to the developer's language.
+            var settingsService = Services.Get<Template.Infra.Settings.SettingsService>();
+            string language = settingsService.Current.language;
+            foreach (var code in new[] { "ja", "vi" })
+            {
+                settingsService.Current.language = code;
+                yield return Services.Get<GameFlow>().GoToAsync(AppState.Title).ToCoroutine();
+                yield return new WaitForSeconds(0.6f);
+                Capture("1-title-" + code);
+            }
+
+            settingsService.Current.language = language;
+            yield return Services.Get<GameFlow>().GoToAsync(AppState.Title).ToCoroutine();
+            yield return new WaitForSeconds(0.4f);
+
             // The garage opens over Home and closes again.
             ClickButton("Button Garage");
             yield return new WaitForSecondsRealtime(0.3f);
