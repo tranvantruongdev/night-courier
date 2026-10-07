@@ -18,6 +18,10 @@ namespace NightCourier.View
         private static readonly Vector3 BossScale = Vector3.one * 2.9f; // hauler art (0.55 u) to the boss's 1.6 u
 
         private readonly SpriteRenderer[] _orbs = new SpriteRenderer[Ride.MaxOrbs];
+        private const float PopSeconds = 0.25f;
+        private readonly SpriteRenderer[] _pops = new SpriteRenderer[32];
+        private readonly float[] _popAge = new float[32];
+        private int _nextPop;
 
         private readonly Transform _root;
         private readonly List<SpriteRenderer> _pool = new List<SpriteRenderer>();
@@ -38,10 +42,62 @@ namespace NightCourier.View
                 _orbs[i].sortingOrder = 13; // above everything but the HUD: you have to see what's coming
                 _orbs[i].enabled = false;
             }
+
+            for (int i = 0; i < _pops.Length; i++)
+            {
+                var go = new GameObject("Pop");
+                go.transform.SetParent(_root, false);
+                _pops[i] = go.AddComponent<SpriteRenderer>();
+                _pops[i].sprite = NeonArt.Dot;
+                _pops[i].sortingOrder = 6;
+                _pops[i].enabled = false;
+            }
+        }
+
+        private static Color ColorOf(EnemyKind kind) => kind switch
+        {
+            EnemyKind.Hauler => Palette.Hauler,
+            EnemyKind.Elite => Palette.Elite,
+            EnemyKind.Splitter => Palette.Splitter,
+            EnemyKind.Zapper => Palette.Zapper,
+            EnemyKind.Boss => Palette.Boss,
+            EnemyKind.Freight => Palette.Freight,
+            _ => Palette.Scout,
+        };
+
+        /// <summary>A quick flash where a drone went down, in its colour.</summary>
+        public void Pop(Vector2 at, EnemyKind kind)
+        {
+            int i = _nextPop;
+            _nextPop = (_nextPop + 1) % _pops.Length;
+            _pops[i].transform.position = at;
+            _pops[i].color = ColorOf(kind);
+            _popAge[i] = 0f;
+            _pops[i].enabled = true;
+        }
+
+        private void AgePops(float dt)
+        {
+            for (int i = 0; i < _pops.Length; i++)
+            {
+                if (!_pops[i].enabled)
+                {
+                    continue;
+                }
+
+                _popAge[i] += dt;
+                float t = _popAge[i] / PopSeconds;
+                _pops[i].enabled = t < 1f;
+                _pops[i].transform.localScale = Vector3.one * (0.6f + 1.6f * t);
+                var c = _pops[i].color;
+                c.a = 1f - t;
+                _pops[i].color = c;
+            }
         }
 
         public void SyncOrbs(Ride ride)
         {
+            AgePops(Time.deltaTime);
             for (int o = 0; o < _orbs.Length; o++)
             {
                 bool live = ride.OrbLife[o] > 0f;
@@ -70,16 +126,7 @@ namespace NightCourier.View
                 var kind = swarm.Kind[i];
                 bool square = kind == EnemyKind.Hauler || kind == EnemyKind.Zapper || kind == EnemyKind.Boss || kind == EnemyKind.Freight;
                 r.sprite = square ? NeonArt.Hauler : NeonArt.Scout;
-                r.color = kind switch
-                {
-                    EnemyKind.Hauler => Palette.Hauler,
-                    EnemyKind.Elite => Palette.Elite,
-                    EnemyKind.Splitter => Palette.Splitter,
-                    EnemyKind.Zapper => Palette.Zapper,
-                    EnemyKind.Boss => Palette.Boss,
-                    EnemyKind.Freight => Palette.Freight,
-                    _ => Palette.Scout,
-                };
+                r.color = ColorOf(kind);
                 r.transform.localScale = kind switch
                 {
                     EnemyKind.Elite => EliteScale,

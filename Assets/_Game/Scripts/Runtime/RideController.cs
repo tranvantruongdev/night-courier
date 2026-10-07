@@ -254,6 +254,7 @@ namespace NightCourier
                     break;
                 case RideEventType.Killed:
                     _audio.PlaySfx(_killSound, 0.5f, UnityEngine.Random.Range(0.85f, 1.2f));
+                    _swarmView.Pop(new Vector2(e.x, e.y), (EnemyKind)(int)e.value);
                     break;
                 case RideEventType.Collected:
                     _audio.PlaySfx(_collectSound, 0.35f, UnityEngine.Random.Range(0.95f, 1.1f));
