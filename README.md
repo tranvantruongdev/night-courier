@@ -20,6 +20,7 @@ fixed-gear bike, has to ride until dawn.
 
 *The GIF and screenshots are recorded by PlayMode tests (`TrailerCapture`, `SmokeTests`). The 19-second
 [trailer](docs/night-courier-trailer.mp4) comes from the same capture (`Tools/make-trailer.ps1`).*
+**Case study:** [momentum as the twist, 300 drones without physics, tuning with a bot](docs/case-study.md).
 
 | | |
 |---|---|
