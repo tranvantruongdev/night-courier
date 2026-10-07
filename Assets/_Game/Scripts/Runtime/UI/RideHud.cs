@@ -136,6 +136,10 @@ namespace NightCourier.UI
                 hud._cardTitles[i] = hud._cards[i].GetComponentInChildren<TextMeshProUGUI>();
                 hud._cardLines[i] = UiFactory.CreateText(levelCard, "", 34, new Vector2(0f, y - 105f), new Vector2(700f, 60f));
                 hud._cardLines[i].color = UiFactory.Muted;
+                // Japanese has no spaces to wrap at; shrink to one line instead of spilling out of the card.
+                hud._cardLines[i].enableAutoSizing = true;
+                hud._cardLines[i].fontSizeMin = 24f;
+                hud._cardLines[i].fontSizeMax = 34f;
             }
 
             return hud;

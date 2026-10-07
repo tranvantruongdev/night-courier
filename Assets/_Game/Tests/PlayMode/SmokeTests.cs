@@ -271,9 +271,42 @@ namespace NightCourier.PlayModeTests
             var controls = controlsSave.Data.GetGame<NightCourier.Core.GarageData>();
             controls.leftHanded = true;
             controlsSave.Data.SetGame(controls);
+            settingsService.Current.language = "ja"; // and in Japanese: the widest card text
+            RideController.Autopilot = false; // still on from the stress ride; it would pick the cards itself
             yield return Services.Get<GameFlow>().GoToAsync(AppState.Game).ToCoroutine();
             yield return new WaitForSeconds(0.5f);
             Capture("8-left-handed");
+            var jaRide = Object.FindAnyObjectByType<RideController>().Ride;
+            jaRide.Parcels.Add(jaRide.Bike.Position.X, jaRide.Bike.Position.Y, jaRide.XpNeeded);
+            float waitedForJaCards = 0f;
+            while (jaRide.PendingLevelUps == 0 && waitedForJaCards < 2f)
+            {
+                waitedForJaCards += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.AreEqual(1, jaRide.PendingLevelUps, "collecting the XP levels up");
+            yield return new WaitForSecondsRealtime(0.4f);
+            Capture("9-level-up-ja");
+            // The offer is random, so check every card line in Japanese, not just the three on screen: one line each.
+            var hud = typeof(RideController).GetField("_hud", BindingFlags.NonPublic | BindingFlags.Instance)
+                .GetValue(Object.FindAnyObjectByType<RideController>());
+            var line = ((TMPro.TMP_Text[])hud.GetType().GetField("_cardLines", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(hud))[0];
+            var lines = new System.Collections.Generic.List<string> { "Evolved: double damage, wider reach." };
+            for (var item = NightCourier.Core.ItemKind.Headlight; item <= NightCourier.Core.ItemKind.EnergyGel; item++)
+            {
+                lines.Add(NightCourier.UI.ItemText.Line(item));
+            }
+
+            foreach (var text in lines)
+            {
+                line.text = Template.UI.UiFactory.Localize(text);
+                line.ForceMeshUpdate();
+                Assert.AreEqual(1, line.textInfo.lineCount, $"one line in Japanese: {line.text}");
+            }
+
+            FirstCard().onClick.Invoke();
+            settingsService.Current.language = language;
             controls.leftHanded = false;
             controlsSave.Data.SetGame(controls);
             yield return Services.Get<GameFlow>().GoToAsync(AppState.Title).ToCoroutine();
