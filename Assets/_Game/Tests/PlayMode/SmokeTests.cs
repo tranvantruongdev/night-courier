@@ -152,6 +152,14 @@ namespace NightCourier.PlayModeTests
             Time.timeScale = 4f;
             // The High Beam above makes this build too strong to die on its own in time: a ring of unkillable haulers
             // around the bike ends the shift.
+            // Every weapon, results in Vietnamese: the full damage chart with long names (they auto-size to one line).
+            // The buttons stay English: they were built when the ride started.
+            for (var w = NightCourier.Core.ItemKind.SpokeCards; w <= NightCourier.Core.ItemKind.PannierDrone; w++)
+            {
+                ride.Loadout.Upgrade(w);
+            }
+
+            settingsService.Current.language = "vi";
             for (int k = 0; k < 24; k++)
             {
                 float a = k * Mathf.PI * 2f / 24f;
@@ -175,7 +183,8 @@ namespace NightCourier.PlayModeTests
 
             Assert.IsTrue(controller.IsOver, $"riding straight should crash; HP {ride.Hp} after {ride.Time:0.0} s");
             yield return new WaitForSecondsRealtime(1.2f); // slow motion, then the results
-            Capture("5-results");
+            Capture("5-results-vi");
+            settingsService.Current.language = language;
             var save = Services.Get<SaveService>().Data;
             Assert.Greater(save.totalRuns, 0, "the ride should be saved");
             Assert.GreaterOrEqual(save.bestScore, (int)ride.Time, "the best time covers this ride");
