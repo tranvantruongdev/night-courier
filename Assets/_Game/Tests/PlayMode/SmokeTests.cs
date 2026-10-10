@@ -19,12 +19,121 @@ namespace NightCourier.PlayModeTests
     /// </summary>
     public class SmokeTests
     {
+        private sealed class MemorySaveStore : ISaveStore
+        {
+            private string _primary;
+            private string _temp;
+            private string _backup;
+            public int Writes;
+
+            public bool TryLoad(out string json) { json = _primary; return _primary != null; }
+            public bool TryLoadTemp(out string json) { json = _temp; return _temp != null; }
+            public bool TryLoadBackup(out string json) { json = _backup; return _backup != null; }
+            public void Save(string json, string lastKnownGoodJson)
+            {
+                if (lastKnownGoodJson != null) _backup = lastKnownGoodJson;
+                _temp = json;
+                _primary = _temp;
+                _temp = null;
+                Writes++;
+            }
+            public void Delete() { _primary = null; _temp = null; _backup = null; }
+        }
+
+        private SaveService _originalSaveService;
+        private SaveService _testSaveService;
+        private MemorySaveStore _testStore;
+
         [TearDown]
         public void TearDown()
         {
             RideController.Autopilot = false;
             RideController.StressDrones = 0;
             Time.timeScale = 1f;
+            if (_originalSaveService != null)
+            {
+                Services.Register(_originalSaveService);
+                _originalSaveService = null;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator Back_during_result_delay_keeps_win_settlement()
+        {
+            yield return StartGameWithSandboxSave();
+            var controller = Object.FindAnyObjectByType<RideController>();
+            Assert.IsNotNull(controller);
+            var ride = controller.Ride;
+            MarkRideWon(ride);
+            var before = _testSaveService.Data.GetGame<NightCourier.Core.GarageData>();
+            int earned = NightCourier.Core.Garage.CoinsFor(ride);
+            int runs = _testSaveService.Data.totalRuns;
+
+            Call(controller, "OnShiftEnded", true);
+            Call(controller, "OnBack");
+            yield return WaitForScene("Title", 20f);
+            yield return WaitForFlowIdle(Services.Get<GameFlow>(), 20f);
+
+            _testSaveService.Load();
+            var after = _testSaveService.Data.GetGame<NightCourier.Core.GarageData>();
+            Assert.AreEqual(runs + 1, _testSaveService.Data.totalRuns);
+            Assert.AreEqual(before.coins + earned, after.coins);
+            Assert.IsTrue(after.CanRide(NightCourier.Core.MapKind.HarborRing));
+            Assert.IsTrue(after.rodeOnce);
+            Assert.AreEqual(1, _testStore.Writes);
+        }
+
+        [UnityTest]
+        public IEnumerator Duplicate_terminal_callback_does_not_duplicate_rewards()
+        {
+            yield return StartGameWithSandboxSave();
+            var controller = Object.FindAnyObjectByType<RideController>();
+            Assert.IsNotNull(controller);
+            MarkRideWon(controller.Ride);
+
+            Call(controller, "OnShiftEnded", true);
+            Call(controller, "OnShiftEnded", true);
+            Assert.AreEqual(1, _testSaveService.Data.totalRuns);
+            Assert.AreEqual(1, _testStore.Writes);
+            Assert.IsTrue(_testSaveService.Data.GetGame<NightCourier.Core.GarageData>().CanRide(NightCourier.Core.MapKind.HarborRing));
+
+            yield return new WaitForSecondsRealtime(0.8f);
+            Call(controller, "OnBack");
+            yield return WaitForScene("Title", 20f);
+            yield return WaitForFlowIdle(Services.Get<GameFlow>(), 20f);
+        }
+
+        private IEnumerator StartGameWithSandboxSave()
+        {
+            if (SceneManager.GetActiveScene().name != "Title" ||
+                !Services.TryGet<GameFlow>(out _) || !Services.TryGet<SaveService>(out _))
+            {
+                SceneManager.LoadScene("Boot");
+                yield return WaitForScene("Title", 20f);
+                yield return WaitForFlowIdle(Services.Get<GameFlow>(), 20f);
+            }
+
+            _originalSaveService = Services.Get<SaveService>();
+            _testStore = new MemorySaveStore();
+            _testSaveService = new SaveService(_testStore, new SaveCodec(SaveSchema.CreateMigrator()));
+            _testSaveService.Load();
+            _testSaveService.Data.SetGame(new NightCourier.Core.GarageData
+            {
+                coins = 50,
+                map = NightCourier.Core.MapKind.MarketStreet,
+                rodeOnce = true,
+            });
+            Services.Register(_testSaveService);
+
+            yield return Services.Get<GameFlow>().GoToAsync(AppState.Game).ToCoroutine();
+            yield return WaitForScene("Game", 20f);
+        }
+
+        private static void MarkRideWon(NightCourier.Core.Ride ride)
+        {
+            var setter = typeof(NightCourier.Core.Ride).GetProperty(nameof(NightCourier.Core.Ride.Won)).GetSetMethod(true);
+            Assert.IsNotNull(setter, "Ride.Won setter should be accessible to the PlayMode fixture");
+            setter.Invoke(ride, new object[] { true });
         }
 
         [UnityTest]
@@ -348,6 +457,18 @@ namespace NightCourier.PlayModeTests
             System.Linq.Enumerable.FirstOrDefault(Object.FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None),
                 b => b.name == "Card 0" && b.gameObject.activeInHierarchy);
 
+        private static IEnumerator WaitForFlowIdle(GameFlow flow, float timeout)
+        {
+            var transitioning = typeof(GameFlow).GetField("_transitioning", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(transitioning, "GameFlow transition state is available to the fixture");
+            float deadline = Time.realtimeSinceStartup + timeout;
+            while ((bool)transitioning.GetValue(flow) && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+
+            Assert.IsFalse((bool)transitioning.GetValue(flow), "GameFlow finishes its scene transition");
+        }
         private static IEnumerator WaitForScene(string name, float timeout)
         {
             float t = 0f;
@@ -373,11 +494,11 @@ namespace NightCourier.PlayModeTests
         }
 
         /// <summary>Calls a private method (controllers keep their handlers private).</summary>
-        private static void Call(object target, string method)
+        private static void Call(object target, string method, params object[] arguments)
         {
             var info = target.GetType().GetMethod(method, BindingFlags.NonPublic | BindingFlags.Instance);
             Assert.IsNotNull(info, $"{target.GetType().Name}.{method} not found");
-            info.Invoke(target, null);
+            info.Invoke(target, arguments);
         }
     }
 }

@@ -68,6 +68,7 @@ namespace NightCourier
         private bool _firstRun;
         private bool _cardHintShown;
         private bool _draftHintShown;
+        private bool _settlementStarted;
 
         public Ride Ride => _ride;
         public bool IsOver => _phase != null && _phase.Current == Phase.Over;
@@ -140,6 +141,7 @@ namespace NightCourier
 
         private void NewRide()
         {
+            _settlementStarted = false;
             var tuning = RideTuning.Default();
             var garageData = Services.Get<SaveService>().Data.GetGame<GarageData>();
             Garage.Apply(garageData, tuning);
@@ -341,19 +343,13 @@ namespace NightCourier
         /// <summary>The shift ends either way: crashed (HP 0) or won (the Dispatcher is down).</summary>
         private async UniTaskVoid OnShiftEnded(bool won)
         {
-            _phase.Go(Phase.Over);
-            _audio.PlaySfx(won ? _levelSound : _crashSound);
-            Haptics.Heavy();
-            if (won)
+            if (_settlementStarted)
             {
-                Radio("Dispatch: Package delivered. Good ride, Kai.");
+                return;
             }
 
-            // A moment of slow motion, then the results.
-            Time.timeScale = JuiceFx.ReduceMotion ? 1f : 0.3f;
-            await UniTask.Delay(TimeSpan.FromSeconds(0.7f), ignoreTimeScale: true, cancellationToken: this.GetCancellationTokenOnDestroy());
-            Time.timeScale = 1f;
-
+            _settlementStarted = true;
+            _phase.Go(Phase.Over);
             var save = Services.Get<SaveService>();
             int seconds = (int)_ride.Time;
             bool newBest = seconds > save.Data.bestScore;
@@ -371,6 +367,18 @@ namespace NightCourier
             save.Data.SetGame(garage);
             save.MarkDirty();
             save.Save();
+
+            _audio.PlaySfx(won ? _levelSound : _crashSound);
+            Haptics.Heavy();
+            if (won)
+            {
+                Radio("Dispatch: Package delivered. Good ride, Kai.");
+            }
+
+            // A moment of slow motion, then the results. Settlement is already durable before this delay.
+            Time.timeScale = JuiceFx.ReduceMotion ? 1f : 0.3f;
+            await UniTask.Delay(TimeSpan.FromSeconds(0.7f), ignoreTimeScale: true, cancellationToken: this.GetCancellationTokenOnDestroy());
+            Time.timeScale = 1f;
 
             string best = newBest ? Loc("New best!") : $"{Loc("Best")} {Clock(save.Data.bestScore)}";
             var chart = new List<(string name, float damage)>();
@@ -444,6 +452,7 @@ namespace NightCourier
 
         private void GoHome()
         {
+            Services.Get<SaveService>().SaveIfDirty();
             Time.timeScale = 1f;
             Services.Get<GameFlow>().GoToAsync(AppState.Title).Forget();
         }
