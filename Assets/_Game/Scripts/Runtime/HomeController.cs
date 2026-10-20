@@ -54,7 +54,7 @@ namespace NightCourier
             Camera.main.backgroundColor = Palette.Night;
             var canvas = UiFactory.CreateCanvas("Home UI");
             _stack = canvas.gameObject.AddComponent<ScreenStack>();
-            _stack.RootBackPressed += Application.Quit;
+            _stack.RootBackPressed += OnRootBack;
             var safe = UiFactory.CreateSafeArea(canvas.transform);
 
             var save = Services.Get<SaveService>();
@@ -79,6 +79,24 @@ namespace NightCourier
             _settingsView = SettingsPanelView.Create(safe);
             _settingsView.CloseRequested += () => CloseSettings().Forget();
             Refresh();
+        }
+
+        /// <summary>
+        /// Android Back with nothing on the screen stack: these popups are plain objects, not stack screens, so close the
+        /// open one first. Quit only from Home itself.
+        /// </summary>
+        private void OnRootBack()
+        {
+            foreach (var popup in new[] { _maps, _garage, _codex, _controls })
+            {
+                if (popup.activeSelf)
+                {
+                    popup.SetActive(false);
+                    return;
+                }
+            }
+
+            Application.Quit();
         }
 
         private void BuildGarage(Transform canvas)

@@ -181,6 +181,17 @@ namespace NightCourier.PlayModeTests
             ClickButton("Button Close");
             yield return new WaitForSecondsRealtime(0.2f);
 
+            // Android Back closes each Home popup instead of quitting the game (these popups are not stack screens).
+            foreach (var (open, popup) in new[] { ("Button Garage", "Garage"), ("Button Ride", "Maps"), ("Button Controls", "Controls"), ("Button Codex", "Codex") })
+            {
+                ClickButton(open);
+                yield return new WaitForSecondsRealtime(0.2f);
+                Assert.IsNotNull(GameObject.Find(popup), $"{popup} opens");
+                PressBack();
+                yield return new WaitForSecondsRealtime(0.2f);
+                Assert.IsNull(GameObject.Find(popup), $"Back closes {popup}");
+            }
+
             // A first ride on Market Street (the save keeps earlier runs), so the first-run tips show.
             var firstSave = Services.Get<SaveService>();
             var firstGarage = firstSave.Data.GetGame<NightCourier.Core.GarageData>();
@@ -443,6 +454,13 @@ namespace NightCourier.PlayModeTests
             controls.leftHanded = false;
             controlsSave.Data.SetGame(controls);
             yield return Services.Get<GameFlow>().GoToAsync(AppState.Title).ToCoroutine();
+        }
+
+        private static void PressBack()
+        {
+            var field = typeof(AppLifecycle).GetField("BackPressed", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(field, "AppLifecycle.BackPressed event backing field should exist");
+            ((System.Action)field.GetValue(null))?.Invoke();
         }
 
         private static void ClickButton(string name)
