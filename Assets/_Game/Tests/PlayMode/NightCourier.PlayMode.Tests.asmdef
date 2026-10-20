@@ -7,6 +7,7 @@
         "Template.Core",
         "Template.Runtime",
         "UniTask",
+        "Unity.InputSystem",
         "UnityEngine.TestRunner",
         "UnityEngine.UI",
         "Unity.TextMeshPro"
